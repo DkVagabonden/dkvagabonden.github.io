@@ -75,6 +75,28 @@ body {
   padding: 60px 32px;
 }
 
+.not-found {
+  max-width: 560px;
+  margin: 10vh auto;
+}
+
+.not-found-code {
+  margin: 0 0 8px;
+  color: var(--green);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.not-found h1 {
+  margin: 0;
+  font-size: 32px;
+}
+
+.not-found > p:not(.not-found-code) {
+  margin: 10px 0 24px;
+  color: var(--muted);
+}
+
 .tools-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
