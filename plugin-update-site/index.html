@@ -42,6 +42,7 @@
           <button id="clearReviewCacheButton" type="button"><span>Review</span><small>Reviews and targets</small></button>
         </div>
       </details>
+      <button id="helpButton" class="button secondary" type="button">Help</button>
       <button id="settingsButton" class="button secondary" type="button">Settings</button>
     </div>
   </header>
@@ -232,6 +233,46 @@
         <button class="button primary" type="submit">Save settings</button>
       </footer>
     </form>
+  </dialog>
+
+  <dialog id="helpDialog" class="help-dialog" aria-labelledby="helpTitle">
+    <header class="help-header">
+      <div><p class="eyebrow">Plugin Update Desk</p><h2 id="helpTitle">Instructions</h2></div>
+      <button id="closeHelp" class="icon-button" type="button" aria-label="Close instructions">&times;</button>
+    </header>
+    <div class="help-body">
+      <section>
+        <h3>1. Export your instance data</h3>
+        <p>Create two CSV exports from the ServiceNow instance you are reviewing. The tool does not load or send data to a server.</p>
+        <div class="help-table-wrap">
+          <table class="help-table">
+            <thead><tr><th>Import</th><th>Required columns</th></tr></thead>
+            <tbody>
+              <tr><td>Installed apps</td><td><code>name</code>, <code>scope</code>, <code>version</code>, <code>latest_version</code></td></tr>
+              <tr><td>App versions</td><td><code>name</code>, <code>scope</code>, <code>version</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>App versions can also include <code>publish_date</code>, <code>dependencies</code>, <code>compatibilities</code>, and <code>short_description</code>.</p>
+      </section>
+      <section>
+        <h3>2. Import and review</h3>
+        <ol>
+          <li>Select <strong>Import</strong>, then upload the Installed apps CSV and App versions CSV.</li>
+          <li>Open a plugin with an available update.</li>
+          <li>Review every available version, then set its recommendation, impact, decision, owner, notes, and team action.</li>
+          <li>After all version decisions are complete, choose the update target.</li>
+        </ol>
+      </section>
+      <section>
+        <h3>3. Save and share work</h3>
+        <p>Imports and reviews remain only in this browser. Use <strong>Export</strong> &gt; <strong>Review</strong> to download a JSON backup, then use <strong>Import</strong> &gt; <strong>Review</strong> to restore it on another browser or device.</p>
+      </section>
+      <section>
+        <h3>Clear local data</h3>
+        <p>Use <strong>Clear cache</strong> to remove saved imports or review data from this browser. Export a review backup first if you need to retain it.</p>
+      </section>
+    </div>
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>

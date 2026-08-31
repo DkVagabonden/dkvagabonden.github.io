@@ -185,6 +185,23 @@ th:nth-child(1) { width: 23%; } th:nth-child(2) { width: 9%; } th:nth-child(3) {
 .add-family { margin-top: 12px; color: var(--green-dark); }
 .settings-error { margin: 12px 0 0; color: var(--red); font-size: 12px; font-weight: 700; }
 .settings-footer { border-top: 1px solid var(--line); background: #fafbfa; }
+.help-dialog { width: min(680px, calc(100vw - 28px)); max-height: min(720px, calc(100vh - 28px)); padding: 0; border: 1px solid var(--line); background: var(--paper); color: var(--ink); box-shadow: var(--shadow); }
+.help-dialog::backdrop { background: rgba(21, 31, 27, .5); }
+.help-header { padding: 17px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--line); }
+.help-header h2 { margin: 0; font-size: 20px; }
+.help-body { max-height: calc(min(720px, 100vh - 28px) - 75px); overflow-y: auto; padding: 20px; }
+.help-body section + section { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--line); }
+.help-body h3 { margin: 0; font-size: 15px; }
+.help-body p, .help-body ol { margin: 7px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.help-body ol { padding-left: 21px; }
+.help-body li + li { margin-top: 5px; }
+.help-body strong { color: var(--ink); }
+.help-body code { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--ink); }
+.help-table-wrap { margin-top: 12px; border: 1px solid var(--line); overflow-x: auto; }
+.help-table { width: 100%; min-width: 480px; border-collapse: collapse; table-layout: auto; }
+.help-table th { background: #edf1ef; }
+.help-table th, .help-table td { padding: 10px 12px; text-align: left; }
+.help-table td { border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
 .toast { position: fixed; z-index: 50; left: 50%; bottom: 22px; transform: translate(-50%, 18px); opacity: 0; pointer-events: none; padding: 10px 15px; color: white; background: #23332e; border-radius: 4px; box-shadow: var(--shadow); transition: .2s ease; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }

@@ -62,10 +62,10 @@
   };
 
   const elements = Object.fromEntries([
-    "csvInput", "importButton", "versionsInput", "importVersionsButton", "reviewInput", "importReviewButton", "exportInstalledButton", "exportVersionsButton", "exportButton", "clearInstalledCacheButton", "clearVersionsCacheButton", "clearReviewCacheButton", "settingsButton", "saveStatus", "searchInput", "clearFilters", "teamOnly", "notesOnly",
+    "csvInput", "importButton", "versionsInput", "importVersionsButton", "reviewInput", "importReviewButton", "exportInstalledButton", "exportVersionsButton", "exportButton", "clearInstalledCacheButton", "clearVersionsCacheButton", "clearReviewCacheButton", "helpButton", "settingsButton", "saveStatus", "searchInput", "clearFilters", "teamOnly", "notesOnly",
     "sortSelect", "inventoryTitle", "pluginRows", "emptyState", "emptyStateTitle", "emptyStateDescription", "currentPageCount", "resultCount", "pagination", "totalCount", "updateCount", "readyCount",
     "progressText", "progressBar", "drawerBackdrop", "reviewDrawer", "closeDrawer", "drawerTitle", "drawerSource", "drawerInstalledVersion", "drawerVersionCount", "drawerUpdateStatus",
-    "reviewForm", "selectedUpdateVersionField", "selectionStatus", "targetVersionField", "versionMetadata", "versionPublishDate", "versionDependencies", "familyAvailability", "versionDescription", "recommendationField", "impactField", "decisionField", "ownerField", "notesField", "actionField", "teamField", "clearReview", "settingsDialog", "settingsForm", "closeSettings", "familyReleaseList", "addFamilyRelease", "resetFamilyReleases", "settingsError", "toast"
+    "reviewForm", "selectedUpdateVersionField", "selectionStatus", "targetVersionField", "versionMetadata", "versionPublishDate", "versionDependencies", "familyAvailability", "versionDescription", "recommendationField", "impactField", "decisionField", "ownerField", "notesField", "actionField", "teamField", "clearReview", "settingsDialog", "settingsForm", "closeSettings", "familyReleaseList", "addFamilyRelease", "resetFamilyReleases", "settingsError", "helpDialog", "closeHelp", "toast"
   ].map(id => [id, document.getElementById(id)]));
 
   /**
@@ -827,6 +827,17 @@
     elements.settingsDialog.close();
   }
 
+  /** Opens the Plugin Update Desk instructions dialog. */
+  function openHelp() {
+    closeActionMenus();
+    elements.helpDialog.showModal();
+  }
+
+  /** Closes the Plugin Update Desk instructions dialog. */
+  function closeHelp() {
+    elements.helpDialog.close();
+  }
+
   /**
    * Validates and saves the configured family releases.
    *
@@ -989,7 +1000,9 @@
   elements.clearInstalledCacheButton.addEventListener("click", () => clearDatasetCache("installedApps", "Installed apps"));
   elements.clearVersionsCacheButton.addEventListener("click", () => clearDatasetCache("appVersions", "App versions"));
   elements.clearReviewCacheButton.addEventListener("click", clearReviewCache);
+  elements.helpButton.addEventListener("click", openHelp);
   elements.settingsButton.addEventListener("click", openSettings);
+  elements.closeHelp.addEventListener("click", closeHelp);
   elements.closeSettings.addEventListener("click", closeSettings);
   elements.settingsForm.addEventListener("submit", saveSettings);
   elements.addFamilyRelease.addEventListener("click", () => addFamilyReleaseRow());
@@ -1000,6 +1013,9 @@
   });
   elements.settingsDialog.addEventListener("click", event => {
     if (event.target === elements.settingsDialog) closeSettings();
+  });
+  elements.helpDialog.addEventListener("click", event => {
+    if (event.target === elements.helpDialog) closeHelp();
   });
   document.querySelectorAll(".action-menu").forEach(menu => menu.addEventListener("toggle", () => {
     if (menu.open) document.querySelectorAll(".action-menu[open]").forEach(other => { if (other !== menu) other.open = false; });
@@ -1029,6 +1045,7 @@
   document.addEventListener("keydown", event => {
     if (event.key !== "Escape") return;
     closeActionMenus();
+    if (elements.helpDialog.open) closeHelp();
     if (elements.settingsDialog.open) closeSettings();
     if (state.activeSource) closeDrawer();
   });
