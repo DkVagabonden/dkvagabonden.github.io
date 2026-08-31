@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Review installed ServiceNow plugins before an instance upgrade.">
+  <title>Plugin Update Desk</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <a class="brand" href="#" aria-label="Plugin Update Desk home">
+      <span class="brand-mark">PU</span>
+      <span><strong>Plugin Update Desk</strong><small>ServiceNow upgrade review</small></span>
+    </a>
+    <div class="header-actions">
+      <span id="saveStatus" class="save-status">Saved locally</span>
+      <details class="action-menu">
+        <summary class="button secondary">Import</summary>
+        <div class="action-menu-panel">
+          <button id="importButton" type="button"><span>Installed apps</span><small>CSV</small></button>
+          <button id="importVersionsButton" type="button"><span>App versions</span><small>CSV</small></button>
+          <button id="importReviewButton" type="button"><span>Review</span><small>JSON</small></button>
+        </div>
+      </details>
+      <input id="csvInput" type="file" accept=".csv,text/csv" hidden>
+      <input id="versionsInput" type="file" accept=".csv,text/csv" hidden>
+      <input id="reviewInput" type="file" accept=".json,application/json" hidden>
+      <details class="action-menu">
+        <summary class="button secondary">Export</summary>
+        <div class="action-menu-panel">
+          <button id="exportInstalledButton" type="button"><span>Installed apps</span><small>CSV</small></button>
+          <button id="exportVersionsButton" type="button"><span>App versions</span><small>CSV</small></button>
+          <button id="exportButton" type="button"><span>Review</span><small>JSON</small></button>
+        </div>
+      </details>
+      <details class="action-menu">
+        <summary class="button primary">Clear cache</summary>
+        <div class="action-menu-panel action-menu-danger">
+          <button id="clearInstalledCacheButton" type="button"><span>Installed apps</span><small>Cached CSV</small></button>
+          <button id="clearVersionsCacheButton" type="button"><span>App versions</span><small>Cached CSV</small></button>
+          <button id="clearReviewCacheButton" type="button"><span>Review</span><small>Reviews and targets</small></button>
+        </div>
+      </details>
+      <button id="settingsButton" class="button secondary" type="button">Settings</button>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <section class="page-heading" aria-labelledby="pageTitle">
+      <div>
+        <p class="eyebrow">Upgrade readiness</p>
+        <h1 id="pageTitle">Installed plugin review</h1>
+        <p class="subtitle">Compare installed and available versions, capture release impact, and isolate update blockers.</p>
+      </div>
+      <div class="review-meter" aria-label="Review progress">
+        <div class="meter-label"><span>Review progress</span><strong id="progressText">0%</strong></div>
+        <div class="meter-track"><span id="progressBar"></span></div>
+      </div>
+    </section>
+
+    <section class="metrics" aria-label="Upgrade overview">
+      <article class="metric"><span>Total installed</span><strong id="totalCount">0</strong><small>from store app export</small></article>
+      <article class="metric metric-update"><span>Updates available</span><strong id="updateCount">0</strong><small>newer version available</small></article>
+      <article class="metric metric-ready"><span>Ready</span><strong id="readyCount">0</strong><small>cleared for update</small></article>
+    </section>
+
+    <section class="workspace">
+      <aside class="filters" aria-label="Plugin filters">
+        <div class="filter-heading">
+          <h2>Filters</h2>
+          <button id="clearFilters" class="text-button" type="button">Reset</button>
+        </div>
+
+        <label class="field-label" for="searchInput">Search plugins</label>
+        <div class="search-wrap">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
+          <input id="searchInput" type="search" placeholder="Name, scope, description...">
+        </div>
+
+        <fieldset>
+          <legend>Update status</legend>
+          <label><input type="checkbox" name="updateStatus" value="update"><span class="dot update"></span>Needs update</label>
+          <label><input type="checkbox" name="updateStatus" value="current"><span class="dot current"></span>Up to date</label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Recommendation</legend>
+          <label><input type="checkbox" name="recommendation" value="must"><span class="dot must"></span>Must update</label>
+          <label><input type="checkbox" name="recommendation" value="should"><span class="dot should"></span>Should update</label>
+          <label><input type="checkbox" name="recommendation" value="can"><span class="dot can"></span>Can update</label>
+          <label><input type="checkbox" name="recommendation" value="do_not"><span class="dot do-not"></span>Do not update</label>
+          <label><input type="checkbox" name="recommendation" value="unassessed"><span class="dot neutral"></span>Not assessed</label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Impact</legend>
+          <label><input type="checkbox" name="impact" value="high"><span class="dot high"></span>High</label>
+          <label><input type="checkbox" name="impact" value="medium"><span class="dot medium"></span>Medium</label>
+          <label><input type="checkbox" name="impact" value="low"><span class="dot low"></span>Low</label>
+          <label><input type="checkbox" name="impact" value="unassessed"><span class="dot neutral"></span>Not assessed</label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Decision</legend>
+          <label><input type="checkbox" name="decision" value="review">Not reviewed</label>
+          <label><input type="checkbox" name="decision" value="ready">Ready</label>
+          <label><input type="checkbox" name="decision" value="hold">On hold</label>
+          <label><input type="checkbox" name="decision" value="blocker">Show stopper</label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Ownership</legend>
+          <label><input id="teamOnly" type="checkbox">Team review required</label>
+          <label><input id="notesOnly" type="checkbox">Has release notes</label>
+        </fieldset>
+      </aside>
+
+      <section class="inventory" aria-labelledby="inventoryTitle">
+        <div class="inventory-toolbar">
+          <div><h2 id="inventoryTitle">Plugin inventory</h2><p><span id="currentPageCount">Showing 0 rows</span> · <span id="resultCount">0 plugins</span></p></div>
+          <label class="sort-control">Sort
+            <select id="sortSelect">
+              <option value="priority">Priority</option>
+              <option value="recommendation">Recommendation</option>
+              <option value="name">Name A-Z</option>
+              <option value="decision">Decision</option>
+              <option value="updated">Recently edited</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Plugin</th><th>Installed</th><th>Available versions</th><th>Recommendation</th><th>Impact</th><th>Decision</th><th>Owner</th><th><span class="sr-only">Open</span></th></tr></thead>
+            <tbody id="pluginRows"></tbody>
+          </table>
+          <div id="emptyState" class="empty-state" hidden>
+            <strong id="emptyStateTitle">Import plugin exports to begin</strong>
+            <span id="emptyStateDescription">Use Import to add installed apps and app versions from your ServiceNow instance.</span>
+          </div>
+        </div>
+        <nav id="pagination" class="pagination" aria-label="Plugin pages"></nav>
+      </section>
+    </section>
+  </main>
+
+  <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
+  <aside id="reviewDrawer" class="review-drawer" aria-labelledby="drawerTitle" aria-hidden="true">
+    <header class="drawer-header">
+      <div><p class="eyebrow">Plugin review</p><h2 id="drawerTitle">Plugin name</h2><code id="drawerSource"></code></div>
+      <button id="closeDrawer" class="icon-button" type="button" aria-label="Close review">&times;</button>
+    </header>
+    <form id="reviewForm">
+      <div class="drawer-body">
+        <div class="version-summary">
+          <div><span>Installed version</span><strong id="drawerInstalledVersion">Unknown</strong></div>
+          <div><span>Versions available</span><strong id="drawerVersionCount">0</strong></div>
+          <span id="drawerUpdateStatus" class="pill current">Up to date</span>
+        </div>
+
+        <div class="target-selection">
+          <label>Selected update target
+            <select id="selectedUpdateVersionField" name="selectedUpdateVersion"></select>
+          </label>
+          <span id="selectionStatus">Complete version reviews before selecting</span>
+        </div>
+
+        <label>Version to review
+          <select id="targetVersionField" name="targetVersion"></select>
+        </label>
+        <div id="versionMetadata" class="version-metadata" hidden>
+          <div><span>Published</span><strong id="versionPublishDate">Unknown</strong></div>
+          <div><span>Dependencies</span><strong id="versionDependencies">None listed</strong></div>
+          <div class="family-availability"><span>Family availability</span><div id="familyAvailability"></div></div>
+          <p id="versionDescription"></p>
+        </div>
+
+        <div class="form-grid">
+          <label>Update recommendation
+            <select id="recommendationField" name="recommendation">
+              <option value="unassessed">Not assessed</option><option value="must">Must update</option><option value="should">Should update</option><option value="can">Can update</option><option value="do_not">Do not update</option>
+            </select>
+          </label>
+          <label>Impact level
+            <select id="impactField" name="impact">
+              <option value="unassessed">Not assessed</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option>
+            </select>
+          </label>
+          <label>Decision
+            <select id="decisionField" name="decision">
+              <option value="review">Not reviewed</option><option value="ready">Ready</option><option value="hold">On hold</option><option value="blocker">Show stopper</option>
+            </select>
+          </label>
+        </div>
+
+        <label>Review owner
+          <input id="ownerField" name="owner" type="text" placeholder="Team or person">
+        </label>
+        <label>Release notes
+          <textarea id="notesField" name="notes" rows="8" placeholder="What changed? Include known issues, dependencies, and testing guidance."></textarea>
+        </label>
+        <label>Team action / validation plan
+          <textarea id="actionField" name="action" rows="4" placeholder="What must the team inspect or test?"></textarea>
+        </label>
+        <label class="check-row"><input id="teamField" name="teamRequired" type="checkbox">Requires team review before update</label>
+      </div>
+      <footer class="drawer-footer">
+        <button id="clearReview" class="button secondary danger" type="button">Clear review</button>
+        <button class="button primary" type="submit">Save review</button>
+      </footer>
+    </form>
+  </aside>
+
+  <dialog id="settingsDialog" class="settings-dialog" aria-labelledby="settingsTitle">
+    <form id="settingsForm" method="dialog">
+      <header class="settings-header">
+        <div><p class="eyebrow">Configuration</p><h2 id="settingsTitle">Settings</h2></div>
+        <button id="closeSettings" class="icon-button" type="button" aria-label="Close settings">&times;</button>
+      </header>
+      <div class="settings-body">
+        <div class="settings-copy">
+          <h3>Tracked family releases</h3>
+          <p>These releases appear in each plugin version's compatibility summary.</p>
+        </div>
+        <div id="familyReleaseList" class="family-release-list"></div>
+        <button id="addFamilyRelease" class="button secondary add-family" type="button">Add family release</button>
+        <p id="settingsError" class="settings-error" role="alert" hidden></p>
+      </div>
+      <footer class="settings-footer">
+        <button id="resetFamilyReleases" class="button secondary" type="button">Restore defaults</button>
+        <button class="button primary" type="submit">Save settings</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
