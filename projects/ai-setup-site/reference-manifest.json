@@ -1,0 +1,22 @@
+{
+  "rules": [
+    "code-documentation.md",
+    "multi-project-rules.md",
+    "project-isolation.md",
+    "servicenow-best-practices.md",
+    "sn-business-rules.md",
+    "sn-client-scripting.md",
+    "sn-gliderecord.md"
+  ],
+  "skills": {
+    "offline/gliderecord-query-review": [
+      "SKILL.md"
+    ],
+    "offline/servicenow-code-review": [
+      "SKILL.md"
+    ],
+    "offline/update-set-preflight": [
+      "SKILL.md"
+    ]
+  }
+}

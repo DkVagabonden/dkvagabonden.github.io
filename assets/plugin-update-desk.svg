@@ -1,0 +1,14 @@
+<svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title description">
+  <title id="title">Plugin Update Desk</title>
+  <desc id="description">A ServiceNow plugin update review illustration.</desc>
+  <rect width="400" height="300" fill="#edf4f1"/>
+  <rect x="77" y="45" width="246" height="210" fill="#ffffff" stroke="#b9cbc3" stroke-width="4"/>
+  <rect x="77" y="45" width="246" height="38" fill="#12372c"/>
+  <circle cx="101" cy="64" r="7" fill="#e9c46a"/>
+  <rect x="126" y="58" width="116" height="11" fill="#d8dfdc"/>
+  <rect x="102" y="108" width="77" height="12" fill="#315b4f"/>
+  <rect x="102" y="137" width="188" height="9" fill="#d8dfdc"/>
+  <rect x="102" y="158" width="154" height="9" fill="#d8dfdc"/>
+  <rect x="102" y="192" width="116" height="33" fill="#e1f2eb"/>
+  <path d="M251 195l14 14 31-34" fill="none" stroke="#087f5b" stroke-width="9" stroke-linecap="square" stroke-linejoin="miter"/>
+</svg>

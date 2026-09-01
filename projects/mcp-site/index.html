@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Learn how ServiceNow MCP tools work and browse a static catalog of documented tool patterns.">
+  <title>ServiceNow MCP Desk | Pizza Projects</title>
+  <link rel="stylesheet" href="../../shared.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <a class="brand" href="../../index.html" aria-label="Pizza Projects home"><span class="brand-mark">MCP</span><span><strong>ServiceNow MCP Desk</strong><small>Learn and explore MCP tools</small></span></a>
+    <nav class="app-nav" aria-label="ServiceNow MCP Desk"><a href="setup.html">Learn</a><a href="tools.html">MCP tools</a><a href="../../index.html">All projects</a></nav>
+  </header>
+  <main class="page-shell mcp-home">
+    <section class="mcp-hero" aria-labelledby="pageTitle">
+      <div><p class="eyebrow">ServiceNow MCP reference</p><h1 id="pageTitle">Start with the job you need to understand.</h1><p>Learn the parts of an MCP integration, review safety considerations, and explore documented ServiceNow tool patterns.</p></div>
+      <img src="../../assets/servicenow-mcp-desk.svg" alt="AI workspace connected to ServiceNow through an MCP server">
+    </section>
+    <section class="route-grid" aria-label="Choose a ServiceNow MCP path">
+      <a class="route-card route-setup" href="setup.html"><span>01</span><h2>I am new to MCP</h2><p>Understand hosts, clients, servers, tools, and the boundary between this website and a real MCP environment.</p><strong>Learn the architecture</strong></a>
+      <a class="route-card route-connect" href="setup.html#responsibilities"><span>02</span><h2>I am planning an integration</h2><p>Review the responsibilities that belong outside this public website, including authentication, policy, logging, and testing.</p><strong>Review responsibilities</strong></a>
+      <a class="route-card route-tools" href="tools.html"><span>03</span><h2>I want tool ideas</h2><p>Browse documented ServiceNow MCP tool patterns by safety level, audience, and functional area.</p><strong>Explore the catalog</strong></a>
+    </section>
+    <section class="mcp-explainer"><div><p class="eyebrow">One server, two experiences</p><h2>What kind of tool are you building?</h2></div><div class="mcp-explainer-cards"><article><span class="type-pill developer">Developer tool</span><h3>Make a narrow, controlled change</h3><p>Use explicit input and server-side scope, table, field, and environment policies before a ServiceNow write.</p><code>create_business_rule({ table, when, script })</code></article><article><span class="type-pill user">User-friendly tool</span><h3>Answer a plain-language question</h3><p>Turn a question into small approved read-only requests, then explain the filters, limits, and assumptions in the answer.</p><code>"How many open incidents are older than 3 months?"</code></article></div></section>
+    <section class="mcp-first-tool"><div><p class="eyebrow">First recommended pattern</p><h2>Start by studying <code>get_table_schema</code></h2><p>This read-only example documents input validation, table policy, and filtered results without providing or running server code.</p></div><a class="button primary" href="tools.html">View the catalog entry</a></section>
+  </main>
+</body>
+</html>

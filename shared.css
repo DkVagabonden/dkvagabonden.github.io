@@ -1,0 +1,31 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap');
+
+:root {
+  --ink: #17201d;
+  --muted: #68746f;
+  --line: #d8dfdc;
+  --canvas: #f4f6f5;
+  --paper: #ffffff;
+  --green: #087f5b;
+  --green-dark: #056448;
+  --green-soft: #e1f2eb;
+  --blue: #245fa8;
+  --blue-soft: #eaf2fc;
+  --amber: #b35c00;
+  --amber-soft: #fff4df;
+  --brand-dark: #12372c;
+  --brand-accent: #e9c46a;
+  --focus-ring: rgba(8, 127, 91, .24);
+}
+
+* { box-sizing: border-box; }
+html { color-scheme: light; }
+body { margin: 0; background: var(--canvas); color: var(--ink); font-family: "DM Sans", sans-serif; font-size: 14px; }
+button, input, select, textarea { font: inherit; }
+button, select { cursor: pointer; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.button { min-height: 36px; padding: 7px 13px; border: 1px solid transparent; border-radius: 4px; font-weight: 700; }
+.button.primary { background: var(--green); color: #fff; }
+.button.primary:hover { background: var(--green-dark); }
+.button.secondary { border-color: #8ca69b; background: var(--paper); color: var(--green-dark); }
+.button.secondary:hover { background: var(--green-soft); }

@@ -1,29 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap');
-
 :root {
-  --ink: #17201d;
-  --muted: #68746f;
-  --line: #d8dfdc;
-  --canvas: #f4f6f5;
-  --paper: #ffffff;
-  --green: #087f5b;
-  --green-dark: #056448;
-  --green-soft: #e1f2eb;
   --red: #c92a2a;
   --red-soft: #fff0f0;
-  --amber: #b35c00;
-  --amber-soft: #fff4df;
-  --blue: #245fa8;
-  --blue-soft: #eaf2fc;
   --shadow: 0 16px 45px rgba(24, 42, 35, .14);
 }
-
-* { box-sizing: border-box; }
-html { color-scheme: light; }
-body { margin: 0; background: var(--canvas); color: var(--ink); font-family: "DM Sans", sans-serif; font-size: 14px; }
-button, input, select, textarea { font: inherit; }
-button, select { cursor: pointer; }
-button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid rgba(8, 127, 91, .22); outline-offset: 1px; }
 
 .app-header { height: 68px; padding: 0 32px; display: flex; align-items: center; justify-content: space-between; gap: 24px; background: #12372c; color: white; border-bottom: 4px solid #e9c46a; position: sticky; top: 0; z-index: 20; }
 .brand { display: inline-flex; align-items: center; gap: 11px; color: inherit; text-decoration: none; min-width: 0; }
@@ -33,13 +12,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .brand small { color: #b9d0c8; font-size: 11px; margin-top: 1px; }
 .header-actions { display: flex; align-items: center; gap: 8px; }
 .save-status { color: #b9d0c8; font-size: 12px; margin-right: 8px; }
-.button { border: 1px solid transparent; border-radius: 4px; min-height: 36px; padding: 7px 13px; font-weight: 700; }
-.button.primary { background: var(--green); color: #fff; }
-.button.primary:hover { background: var(--green-dark); }
 .app-header .button.primary { background: #e9c46a; color: #16362d; }
 .app-header .button.primary:hover { background: #f3d985; }
-.button.secondary { background: transparent; color: inherit; border-color: currentColor; }
-.app-header .button.secondary { color: #e5f0ec; border-color: #53776c; }
+.app-header .button.secondary { background: transparent; color: #e5f0ec; border-color: #53776c; }
+.app-header .button.secondary:hover { background: #214c40; color: #fff; border-color: #6f9589; }
 .button.danger { color: var(--red); border-color: #e9bcbc; }
 .action-menu { position: relative; }
 .action-menu summary { display: flex; align-items: center; gap: 7px; list-style: none; user-select: none; }

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Review installed ServiceNow plugins before an instance upgrade.">
   <title>Plugin Update Desk</title>
+  <link rel="stylesheet" href="../../shared.css">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -138,7 +139,7 @@
           </table>
           <div id="emptyState" class="empty-state" hidden>
             <strong id="emptyStateTitle">Import plugin exports to begin</strong>
-            <span id="emptyStateDescription">Use Import to add installed apps and app versions from your ServiceNow instance.</span>
+            <span id="emptyStateDescription">Use Import to upload <code>sys_store_app</code> with <code>name</code>, <code>scope</code>, <code>version</code>, and <code>latest_version</code>; then upload <code>sys_app_version</code> with <code>name</code>, <code>scope</code>, and <code>version</code>.</span>
           </div>
         </div>
         <nav id="pagination" class="pagination" aria-label="Plugin pages"></nav>
@@ -246,14 +247,14 @@
         <p>Create two CSV exports from the ServiceNow instance you are reviewing. The tool does not load or send data to a server.</p>
         <div class="help-table-wrap">
           <table class="help-table">
-            <thead><tr><th>Import</th><th>Required columns</th></tr></thead>
+            <thead><tr><th>Import</th><th>ServiceNow table</th><th>Required columns</th></tr></thead>
             <tbody>
-              <tr><td>Installed apps</td><td><code>name</code>, <code>scope</code>, <code>version</code>, <code>latest_version</code></td></tr>
-              <tr><td>App versions</td><td><code>name</code>, <code>scope</code>, <code>version</code></td></tr>
+              <tr><td>Installed apps</td><td><code>sys_store_app</code></td><td><code>name</code>, <code>scope</code>, <code>version</code>, <code>latest_version</code></td></tr>
+              <tr><td>App versions</td><td><code>sys_app_version</code></td><td><code>name</code>, <code>scope</code>, <code>version</code></td></tr>
             </tbody>
           </table>
         </div>
-        <p>App versions can also include <code>publish_date</code>, <code>dependencies</code>, <code>compatibilities</code>, and <code>short_description</code>.</p>
+        <p>Export the listed fields from each table as CSV. App versions can also include <code>publish_date</code>, <code>dependencies</code>, <code>compatibilities</code>, and <code>short_description</code>.</p>
       </section>
       <section>
         <h3>2. Import and review</h3>

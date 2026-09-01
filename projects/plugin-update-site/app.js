@@ -68,6 +68,17 @@
     "reviewForm", "selectedUpdateVersionField", "selectionStatus", "targetVersionField", "versionMetadata", "versionPublishDate", "versionDependencies", "familyAvailability", "versionDescription", "recommendationField", "impactField", "decisionField", "ownerField", "notesField", "actionField", "teamField", "clearReview", "settingsDialog", "settingsForm", "closeSettings", "familyReleaseList", "addFamilyRelease", "resetFamilyReleases", "settingsError", "helpDialog", "closeHelp", "toast"
   ].map(id => [id, document.getElementById(id)]));
 
+  /** Saves a browser-local value and reports when browser storage is unavailable. @param {string} key Storage key. @param {unknown} value Value to persist. @returns {boolean} Whether the value was saved. */
+  function saveLocalValue(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+      return true;
+    } catch {
+      elements.saveStatus.textContent = "Local storage unavailable";
+      return false;
+    }
+  }
+
   /**
    * Loads persisted version reviews from local storage.
    *
@@ -112,8 +123,7 @@
 
   /** Saves the current family-release settings and updates the visible save state. */
   function saveFamilyReleases() {
-    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ familyReleases: state.familyReleases }));
-    elements.saveStatus.textContent = "Saved locally";
+    if (saveLocalValue(SETTINGS_STORAGE_KEY, { familyReleases: state.familyReleases })) elements.saveStatus.textContent = "Saved locally";
   }
 
   /**
@@ -372,14 +382,12 @@
 
   /** Saves reviews to local storage and updates the visible save state. */
   function saveReviews() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.reviews));
-    elements.saveStatus.textContent = "Saved locally";
+    if (saveLocalValue(STORAGE_KEY, state.reviews)) elements.saveStatus.textContent = "Saved locally";
   }
 
   /** Saves update-version selections to local storage and updates the visible save state. */
   function saveSelections() {
-    localStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify(state.selectedVersions));
-    elements.saveStatus.textContent = "Saved locally";
+    if (saveLocalValue(SELECTION_STORAGE_KEY, state.selectedVersions)) elements.saveStatus.textContent = "Saved locally";
   }
 
   /**

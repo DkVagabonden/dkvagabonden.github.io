@@ -1,0 +1,16 @@
+<svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title description">
+  <title id="title">ServiceNow MCP Desk</title>
+  <desc id="description">An MCP server connection illustration.</desc>
+  <rect width="400" height="300" fill="#edf4f1"/>
+  <rect x="142" y="103" width="116" height="95" fill="#12372c" stroke="#0d261f" stroke-width="4"/>
+  <rect x="159" y="122" width="82" height="10" fill="#e9c46a"/>
+  <rect x="159" y="147" width="38" height="10" fill="#b9d0c8"/>
+  <rect x="207" y="147" width="34" height="10" fill="#b9d0c8"/>
+  <rect x="159" y="172" width="82" height="7" fill="#53776c"/>
+  <circle cx="84" cy="150" r="30" fill="#eaf2fc" stroke="#245fa8" stroke-width="4"/>
+  <circle cx="316" cy="150" r="30" fill="#e1f2eb" stroke="#087f5b" stroke-width="4"/>
+  <path d="M114 150h28M258 150h28" stroke="#6d8279" stroke-width="7"/>
+  <path d="M124 137l13 13-13 13M276 137l-13 13 13 13" fill="none" stroke="#6d8279" stroke-width="5" stroke-linejoin="miter"/>
+  <text x="67" y="157" fill="#245fa8" font-family="sans-serif" font-size="16" font-weight="700">AI</text>
+  <text x="294" y="157" fill="#087f5b" font-family="sans-serif" font-size="16" font-weight="700">SN</text>
+</svg>

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Browse ServiceNow AI rules and skills for GitHub Copilot and Antigravity IDE.">
+  <title>AI Setup Desk | Pizza Projects</title>
+  <link rel="stylesheet" href="../../shared.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <a class="brand" href="../../index.html" aria-label="Pizza Projects home"><span class="brand-mark">AI</span><span><strong>AI Setup Desk</strong><small>ServiceNow guidance library</small></span></a>
+    <nav class="app-nav" aria-label="AI Setup Desk sections"><a href="#workspace-setup">Workspace</a><a href="#guidance-library">Library</a><a href="../mcp-site/index.html">MCP Desk</a><a href="../../index.html">All projects</a></nav>
+  </header>
+  <main class="page-shell">
+    <section class="page-heading" aria-labelledby="pageTitle">
+      <p class="eyebrow">ServiceNow AI workspace</p>
+      <h1 id="pageTitle">Set up, browse, and use guidance</h1>
+      <p>Choose your workspace first, then search the ServiceNow rules and skills library. Model choice inside the workspace does not change where guidance is installed.</p>
+    </section>
+
+    <section id="workspace-setup" class="setup-section" aria-labelledby="setupTitle">
+      <div class="section-heading"><div><p class="eyebrow">Setup guide</p><h2 id="setupTitle">Choose your workspace</h2></div><span id="setupStatus" class="setup-status">VS Code + GitHub Copilot</span></div>
+      <div class="workspace-options" role="radiogroup" aria-label="AI workspace">
+        <label class="workspace-option"><input type="radio" name="workspace" value="copilot" checked><span><strong>Visual Studio Code</strong><small>GitHub Copilot</small></span></label>
+        <label class="workspace-option"><input type="radio" name="workspace" value="antigravity"><span><strong>Antigravity IDE</strong><small>Workspace rules and skills</small></span></label>
+      </div>
+      <div class="setup-output">
+        <div><h3 id="workspaceTitle">Visual Studio Code + GitHub Copilot</h3><p id="workspaceDescription"></p></div>
+        <pre id="workspaceTree" class="file-tree"></pre>
+        <ol id="workspaceSteps" class="workspace-steps"></ol>
+      </div>
+    </section>
+
+    <section id="guidance-library" class="library-section" aria-labelledby="libraryTitle">
+      <div class="section-heading"><div><p class="eyebrow">Offline reference library</p><h2 id="libraryTitle">Rules and skills</h2></div><span id="libraryCount" class="library-count">Loading library...</span></div>
+      <div class="library-controls">
+        <label class="search-field" for="searchInput"><span class="sr-only">Search guidance</span><input id="searchInput" type="search" placeholder="Search GlideRecord, code review, update set..." autocomplete="off"></label>
+        <div class="filter-group"><span>Show</span><div id="typeFilters" class="filter-buttons"><button class="filter-button active" type="button" data-type="all" aria-pressed="true">All guidance</button><button class="filter-button" type="button" data-type="rule" aria-pressed="false">Rules</button><button class="filter-button" type="button" data-type="skill" aria-pressed="false">Skills</button></div></div>
+      </div>
+      <div class="starter-pack"><div><strong>Offline starter pack</strong><span>Core rules plus Code Review, GlideRecord Query Review, and Update Set Preflight.</span></div><button id="addOfflineStarter" class="button secondary" type="button">Add pack</button></div>
+      <div class="library-layout">
+        <div class="guidance-list-panel"><nav id="guidanceList" class="guidance-list" aria-label="ServiceNow guidance"></nav></div>
+        <article id="guidanceDetail" class="guidance-detail" aria-live="polite"><p class="empty-copy">Select a rule or skill to read it here.</p></article>
+      </div>
+    </section>
+
+    <section class="mcp-handoff" aria-labelledby="mcpHandoffTitle">
+      <div><p class="eyebrow">Researching ServiceNow MCP?</p><h2 id="mcpHandoffTitle">MCP documentation lives in ServiceNow MCP Desk</h2><p>Use ServiceNow MCP Desk to learn the architecture, review safety boundaries, and browse documented tool patterns.</p></div>
+      <a class="button secondary" href="../mcp-site/index.html">Open ServiceNow MCP Desk</a>
+    </section>
+
+    <section class="selection-section" aria-labelledby="selectionTitle">
+      <div><p class="eyebrow">Your selection</p><h2 id="selectionTitle">Guidance to install</h2><p id="selectionSummary">No items selected.</p></div>
+      <div class="selection-actions"><button id="downloadSelection" class="button primary" type="button" disabled>Download selected ZIP</button><button id="clearSelection" class="button secondary" type="button" disabled>Clear</button></div>
+    </section>
+    <p id="statusMessage" class="status-message" role="status"></p>
+  </main>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

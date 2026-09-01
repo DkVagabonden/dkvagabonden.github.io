@@ -1,0 +1,8 @@
+{
+  "name": "Get table schema",
+  "level": "read",
+  "audience": "developer",
+  "area": "Foundation",
+  "description": "A documented pattern for returning approved field metadata for one allowed ServiceNow table.",
+  "requires": "A real implementation would need a table allow-list, field filtering, independent tests, and authenticated ServiceNow access outside this website."
+}

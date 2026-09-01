@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Learn the architecture and safety boundaries behind ServiceNow MCP tools.">
+  <title>Learn MCP Architecture | ServiceNow MCP Desk</title>
+  <link rel="stylesheet" href="../../shared.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <a class="brand" href="index.html" aria-label="ServiceNow MCP Desk home"><span class="brand-mark">MCP</span><span><strong>ServiceNow MCP Desk</strong><small>Static documentation library</small></span></a>
+    <nav class="app-nav" aria-label="ServiceNow MCP Desk"><a class="active" href="setup.html">Learn</a><a href="tools.html">MCP tools</a><a href="../../index.html">All projects</a></nav>
+  </header>
+
+  <main class="page-shell guided-shell">
+    <section class="guided-heading" aria-labelledby="pageTitle">
+      <p class="eyebrow">Architecture guide</p>
+      <h1 id="pageTitle">Understand a ServiceNow MCP integration</h1>
+      <p>This static guide explains the moving parts and safety boundaries. It does not install, configure, connect to, or run an MCP server.</p>
+    </section>
+
+    <ol class="setup-rail" aria-label="Architecture topics">
+      <li><a href="#boundary"><span>1</span>Website boundary</a></li>
+      <li><a href="#components"><span>2</span>MCP components</a></li>
+      <li><a href="#responsibilities"><span>3</span>Responsibilities</a></li>
+      <li><a href="#review"><span>4</span>Safety review</a></li>
+    </ol>
+
+    <section id="boundary" class="guided-section" aria-labelledby="serverTitle">
+      <div class="step-marker">01</div>
+      <div class="guided-copy"><p class="eyebrow">Static website</p><h2 id="serverTitle">Know what this site does not do</h2><p>ServiceNow MCP Desk publishes HTML, CSS, browser JavaScript, and JSON catalog metadata. It has no backend, receives no credentials, makes no authenticated ServiceNow requests, and cannot execute an MCP tool.</p></div>
+      <pre class="code-preview">GitHub Pages
+  HTML                # Documentation pages
+  CSS                 # Presentation
+  Browser JavaScript  # Search and filtering
+  JSON                # Public catalog metadata</pre>
+    </section>
+
+    <section id="components" class="guided-section" aria-labelledby="toolTitle">
+      <div class="step-marker">02</div>
+      <div class="guided-copy"><p class="eyebrow">Core concepts</p><h2 id="toolTitle">Separate the MCP roles</h2><p>A host contains the AI experience, a client maintains the connection, a server exposes capabilities, and a tool performs a bounded operation. This catalog documents tool ideas; it is none of those runtime components.</p><a class="button primary" href="tools.html">Open the tool catalog</a></div>
+      <div class="guidance-checks"><div><strong>Host</strong><span>Contains the AI experience</span></div><div><strong>Client</strong><span>Connects to an MCP server</span></div><div><strong>Server</strong><span>Exposes approved capabilities</span></div><div><strong>Tool</strong><span>Describes one bounded operation</span></div></div>
+    </section>
+
+    <section id="responsibilities" class="guided-section" aria-labelledby="connectionTitle">
+      <div class="step-marker">03</div>
+      <div class="guided-copy"><p class="eyebrow">Outside this repository</p><h2 id="connectionTitle">Keep runtime responsibilities elsewhere</h2><p>An actual implementation must independently choose a supported MCP SDK and transport, authenticate to ServiceNow, enforce table and field policy, protect secrets, log safely, and test failure cases. This public catalog supplies no implementation or configuration.</p></div>
+      <div class="guidance-checks"><div><strong>Authentication</strong><span>Never belongs in this site</span></div><div><strong>Authorization</strong><span>Enforce on every operation</span></div><div><strong>Observability</strong><span>Exclude secrets and sensitive data</span></div><div><strong>Testing</strong><span>Begin in non-production</span></div></div>
+    </section>
+
+    <section id="review" class="guided-section verify-section" aria-labelledby="verifyTitle">
+      <div class="step-marker">04</div>
+      <div class="guided-copy"><p class="eyebrow">Planning checklist</p><h2 id="verifyTitle">Review every proposed tool before implementation</h2><p>Use these questions when evaluating catalog ideas. The answers and implementation belong to the separate system that actually runs the tool.</p></div>
+      <div class="guidance-checks"><div><strong>Scope</strong><span>Is the operation narrowly defined?</span></div><div><strong>Access</strong><span>Are tables and fields allow-listed?</span></div><div><strong>Impact</strong><span>Can it remain read-only?</span></div><div><strong>Recovery</strong><span>Are errors and rollback understood?</span></div></div>
+    </section>
+    <p id="statusMessage" class="status-message" role="status"></p>
+  </main>
+</body>
+</html>

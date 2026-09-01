@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Browse reusable JavaScript ServiceNow MCP tool packages.">
+  <title>MCP Tool Explorer | ServiceNow MCP Desk</title>
+  <link rel="stylesheet" href="../../shared.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <a class="brand" href="index.html" aria-label="ServiceNow MCP Desk home"><span class="brand-mark">MCP</span><span><strong>ServiceNow MCP Desk</strong><small>Static tool catalog</small></span></a>
+    <nav class="app-nav" aria-label="ServiceNow MCP Desk"><a href="setup.html">Learn</a><a class="active" href="tools.html">MCP tools</a><a href="../../index.html">All projects</a></nav>
+  </header>
+
+  <main class="page-shell explorer-shell">
+    <section class="explorer-heading" aria-labelledby="pageTitle"><p class="eyebrow">MCP tool catalog</p><h1 id="pageTitle">Browse documented ServiceNow MCP tool patterns</h1><p>This static catalog explains what each tool could do, who it serves, and which safeguards an implementation would require. It does not contain or execute MCP server code.</p></section>
+    <section class="library-key" aria-labelledby="libraryKeyTitle"><div><p class="eyebrow">Catalog boundary</p><h2 id="libraryKeyTitle">Definitions document. Servers execute.</h2></div><div class="library-key-items"><article><strong>Website catalog files</strong><code>tool-library/definitions/</code><span>Public JSON metadata supplies the content displayed on this page.</span></article><article><strong>Runtime implementation</strong><span>A separate, independently secured MCP environment would implement, authenticate, authorize, and test any selected pattern.</span></article></div></section>
+    <section class="explorer-layout" aria-label="MCP tool library">
+      <aside class="tool-sidebar"><div><h2>Find a tool</h2><label class="search-field" for="toolSearch"><span class="sr-only">Search MCP tools</span><input id="toolSearch" type="search" placeholder="Search tools" autocomplete="off"></label></div><div class="sidebar-filter"><span>Safety level</span><button class="filter-button active" type="button" data-level="all" aria-pressed="true">All tools</button><button class="filter-button" type="button" data-level="read" aria-pressed="false">Read-only first</button><button class="filter-button" type="button" data-level="write" aria-pressed="false">Controlled write</button></div><div class="sidebar-filter"><span>Audience</span><button class="filter-button active" type="button" data-audience="all" aria-pressed="true">All audiences</button><button class="filter-button" type="button" data-audience="developer" aria-pressed="false">Developer</button><button class="filter-button" type="button" data-audience="user" aria-pressed="false">User-friendly</button></div><p class="sidebar-note">Start with a read-only tool and test it against a non-production instance.</p></aside>
+      <section class="tool-explorer"><header class="tool-explorer-head"><div><h2>Published MCP tools</h2><p id="toolCount">Loading tools...</p></div></header><div id="toolList" class="tool-list" aria-live="polite"></div></section>
+      <aside class="package-panel"><p class="eyebrow">Catalog guide</p><h2>How to read each entry</h2><dl><dt>Name and description</dt><dd>Summarize the documented capability.</dd><dt>Safety level</dt><dd>Distinguishes read-only patterns from controlled-write concepts.</dd><dt>Audience</dt><dd>Identifies developer-oriented and user-friendly experiences.</dd><dt>Before implementation</dt><dd>Lists controls that a separate runtime would need.</dd><dt>Catalog metadata</dt><dd>Public documentation only. Nothing on this page runs against ServiceNow.</dd></dl></aside>
+    </section>
+    <section class="audience-strip"><article><p class="eyebrow">Controlled-write design</p><h2>Treat write patterns with care</h2><p>The catalog includes no published write patterns. Any future entry should document scope, table, field, environment, audit, and rollback requirements.</p></article><article><p class="eyebrow">User-friendly design</p><h2>Keep questions bounded and explainable</h2><p>A user-facing pattern should describe how plain-language requests become approved read-only queries and how filters, limits, and assumptions remain visible.</p></article></section>
+    <p id="statusMessage" class="status-message" role="status"></p>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
