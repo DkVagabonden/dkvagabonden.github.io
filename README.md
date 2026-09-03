@@ -15,7 +15,7 @@ Published site: <https://dkvagabonden.github.io/>
 All projects run entirely in the browser. The repository has no backend, build step, npm dependency, or executable MCP server.
 
 ## Project structure
-
+-+
 Every project keeps its primary static files at the project root:
 
 ```text

@@ -643,7 +643,6 @@
     saveReviews();
     showToast("Plugin review saved");
     applyFilters();
-    closeDrawer();
   }
 
   /** Removes the active version review after user confirmation. */
@@ -996,6 +995,26 @@
     toastTimer = setTimeout(() => elements.toast.classList.remove("show"), 2600);
   }
 
+  /** Restores cached CSV imports so they remain available after a page refresh. */
+  async function restoreCachedDatasets() {
+    try {
+      const [installedRecords, versionRecords] = await Promise.all([
+        loadCachedDataset("installedApps"),
+        loadCachedDataset("appVersions")
+      ]);
+      state.installedRecords = installedRecords || [];
+      state.versionRecords = versionRecords || [];
+      const uniquePlugins = new Map(state.installedRecords.map(plugin => [plugin.source, plugin]));
+      state.plugins = [...uniquePlugins.values()];
+      rebuildVersionIndex();
+      applyFilters();
+      if (installedRecords || versionRecords) showToast("Saved imports restored");
+    } catch {
+      applyFilters();
+      elements.saveStatus.textContent = "Import cache unavailable";
+    }
+  }
+
   elements.importButton.addEventListener("click", () => { closeActionMenus(); elements.csvInput.click(); });
   elements.csvInput.addEventListener("change", event => importInventory(event.target.files[0]));
   elements.importVersionsButton.addEventListener("click", () => { closeActionMenus(); elements.versionsInput.click(); });
@@ -1058,5 +1077,5 @@
     if (state.activeSource) closeDrawer();
   });
 
-  applyFilters();
+  restoreCachedDatasets();
 })();
