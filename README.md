@@ -9,6 +9,7 @@ Published site: <https://dkvagabonden.github.io/>
 | Project | Purpose | Published path |
 | --- | --- | --- |
 | Plugin Update Desk | Compare installed applications with available versions and record upgrade reviews. | [`/projects/plugin-update-site/`](https://dkvagabonden.github.io/projects/plugin-update-site/) |
+| Platform Upgrade Desk | Review installed app versions, capture upgrade decisions, and browse family-release notes. | [`/projects/platform-upgrade-site/`](https://dkvagabonden.github.io/projects/platform-upgrade-site/) |
 | AI Setup Desk | Browse and download ServiceNow rules and skills for supported AI workspaces. | [`/projects/ai-setup-site/`](https://dkvagabonden.github.io/projects/ai-setup-site/) |
 | ServiceNow MCP Desk | Learn MCP architecture and browse documented ServiceNow tool patterns. | [`/projects/mcp-site/`](https://dkvagabonden.github.io/projects/mcp-site/) |
 
@@ -51,6 +52,24 @@ Use **Import** in the application to upload CSV exports from the ServiceNow inst
 | App versions | `name`, `scope`, `version` |
 
 Optional version metadata columns are `publish_date`, `dependencies`, `compatibilities`, and `short_description`.
+
+## Platform Upgrade Desk
+
+Platform Upgrade Desk combines an application-upgrade review with the Zurich-to-Brazil release-note reader. The product catalog and note content come only from the local markdown in `delta-zurich-brazil/`; at startup it reads `index.md` and `rn-combined-intro.md`, then preloads every Markdown file in that local manifest with bounded concurrency. Search covers the fully loaded corpus. The Brazil tab formats the source and the Delta tab shows the original file. Platform-wide notes remain browseable whether or not an application inventory contains a corresponding Store app. Users can explicitly link release notes to an application, with those links saved locally.
+
+The Markdown corpus is bundled at `projects/platform-upgrade-site/delta-zurich-brazil/`, so no visitor upload is required. Both direct local opening and GitHub Pages use the same project-relative folder path.
+
+When adding a release-note file, include its link in the local `index.md` manifest and combined intro so the static browser can discover and preload it.
+
+In **Release notes**, mark each area as **Not reviewed**, **Relevant to us**, or **Not relevant**, then filter the catalog by that choice. **Matches installed apps** suggests areas whose title exactly matches an imported application's name or title. Suggestions remain unreviewed until a person confirms relevance, and unmatched platform notes stay available under **All areas**. Use **Save for team** on an individual feature or **Save area for team** for a whole topic to collect a reading list. **Team brief** copies the selected items, summaries, and source links as Markdown. Relevance decisions and the brief are included in the application review-plan backup.
+
+Open it at <https://dkvagabonden.github.io/projects/platform-upgrade-site/>.
+
+### Application review imports
+
+Use **Applications** to import CSV files exported from the instance being reviewed. `sys_store_app` requires `name`, `scope`, and `version`; the expanded export also supplies fields such as `latest_version`, `update_available`, `auto_update`, `compatibilities`, and `sys_updated_on`. `sys_app_version` requires `name` and `version`; when `scope` is present, it is the exact version-history join key. Older scope-less exports use an exact normalized name match only when that name identifies one installed scope. Ambiguous or missing matches remain visible instead of being guessed. When history does not include a newer release, `sys_store_app.latest_version` supplies the target candidate.
+
+Reviews are recorded per candidate version. A target version becomes selectable after all candidate versions have a decision. Imports are cached in the current browser; reviews, targets, and application-to-note links stay in local browser storage. Use **Plan** to import or export a review-plan JSON backup, or export the imported CSVs. The site does not connect to an instance or upload these files. Do not commit instance exports to this repository or publish them as static site assets; visitors to a static site can retrieve any files deployed with it.
 
 ## AI Setup Desk
 

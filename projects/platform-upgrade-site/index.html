@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Browse ServiceNow platform release notes from Zurich to Brazil.">
+  <title>Platform Upgrade Desk</title>
+  <link rel="stylesheet" href="../../shared.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <a class="brand" href="../../index.html" aria-label="Pizza Projects home">
+      <span class="brand-mark">UP</span>
+      <span><strong>Platform Upgrade Desk</strong><small>Application review and family release notes</small></span>
+    </a>
+    <div class="header-meta">
+      <span class="connection-dot" aria-hidden="true"></span>
+      <span id="sourceStatus" role="status">Loading local markdown</span>
+      <a class="home-link" href="../../index.html">All tools</a>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <section class="release-heading" aria-labelledby="pageTitle">
+      <div>
+        <p class="eyebrow">Platform upgrade</p>
+        <h1 id="pageTitle">Zurich <span aria-hidden="true">→</span> Brazil</h1>
+        <p class="subtitle">Plan app upgrades, review release notes, and scan fixes in one place.</p>
+      </div>
+      <a class="source-link" href="https://www.servicenow.com/docs/r/delta-zurich-brazil/rn-combined-intro.html" target="_blank" rel="noopener noreferrer">ServiceNow release overview <span aria-hidden="true">↗</span></a>
+    </section>
+
+    <div class="workspace-switcher">
+      <div class="workspace-tabs" role="tablist" aria-label="Upgrade workspace">
+        <button id="notesWorkspaceTab" class="workspace-tab active" type="button" role="tab" aria-selected="true" aria-controls="notesWorkspacePanel">Release notes</button>
+        <button id="applicationsWorkspaceTab" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="applicationsWorkspacePanel">Applications</button>
+        <button id="problemFixesWorkspaceTab" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="problemFixesWorkspacePanel">Problem fixes</button>
+      </div>
+      <button id="teamBriefOpen" class="team-brief-trigger" type="button">Team brief <span id="teamBriefCount">0</span></button>
+    </div>
+
+    <section id="notesWorkspacePanel" class="workspace-panel" role="tabpanel" aria-labelledby="notesWorkspaceTab">
+    <section class="data-bar" aria-label="Release note view">
+      <div class="mode-switch" role="tablist" aria-label="Release note view">
+        <button id="brazilMode" class="mode-tab active" type="button" role="tab" aria-selected="true" data-mode="brazil">Brazil notes</button>
+        <button id="deltaMode" class="mode-tab" type="button" role="tab" aria-selected="false" data-mode="delta">Delta markdown</button>
+      </div>
+      <p id="datasetCaption">Formatted Zurich-to-Brazil release notes</p>
+    </section>
+
+    <section class="metrics" aria-label="Release note catalog">
+      <article class="metric"><span>Release-note areas</span><strong id="productCount">--</strong><small>applications and platform features</small></article>
+      <article class="metric"><span>Upgrade path</span><strong>Zurich → Brazil</strong><small>family release notes</small></article>
+      <article class="metric"><span>Current area</span><strong id="currentProductMetric">Service Portal</strong><small>local markdown source</small></article>
+    </section>
+
+    <section class="browser-layout">
+      <aside class="catalog" aria-labelledby="catalogTitle">
+        <div class="catalog-header">
+          <div><p class="eyebrow">Release catalog</p><h2 id="catalogTitle">Applications &amp; platform features</h2></div>
+          <span id="visibleCount" class="count-badge">0</span>
+        </div>
+        <label class="search-label" for="searchInput">Find an application or feature</label>
+        <div class="search-box">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
+          <input id="searchInput" type="search" placeholder="Search applications and features" autocomplete="off">
+        </div>
+        <label class="relevance-filter" for="noteRelevanceFilter">Show release notes
+          <select id="noteRelevanceFilter"><option value="all">All areas</option><option value="suggested">Matches installed apps</option><option value="relevant">Relevant to us</option><option value="unreviewed">Not reviewed</option><option value="not-relevant">Not relevant</option></select>
+        </label>
+        <p id="catalogMessage" class="catalog-message" role="status" hidden></p>
+        <nav aria-label="Release-note areas"><ul id="productList" class="product-list"></ul></nav>
+      </aside>
+
+      <article id="reader" class="reader" aria-live="polite">
+        <div class="reader-loading"><span class="loader" aria-hidden="true"></span><span>Loading release catalog</span></div>
+      </article>
+    </section>
+    <p class="platform-note">The archive includes Store applications and platform features. Use exact app-scope matches where available, then mark areas relevant to your instance; platform guidance such as Service Portal remains available even without a Store app record.</p>
+    </section>
+
+    <section id="applicationsWorkspacePanel" class="workspace-panel applications-panel" role="tabpanel" aria-labelledby="applicationsWorkspaceTab" hidden>
+      <div class="applications-heading">
+        <div><p class="eyebrow">Application readiness</p><h2>Installed applications</h2><p>Compare installed app versions with the catalog, capture decisions, and link relevant platform notes.</p></div>
+        <div class="application-actions">
+          <input id="appInventoryInput" type="file" accept=".csv,text/csv" hidden>
+          <input id="appVersionsInput" type="file" accept=".csv,text/csv" hidden>
+          <input id="appPlanInput" type="file" accept=".json,application/json" hidden>
+          <button id="importAppInventory" class="action-button primary-action" type="button">Import installed apps</button>
+          <button id="importAppVersions" class="action-button" type="button">Import version catalog</button>
+          <details class="application-menu">
+            <summary class="action-button">Plan</summary>
+            <div class="application-menu-panel">
+              <button id="exportInstalledApps" type="button">Export installed apps CSV</button>
+              <button id="exportVersionCatalog" type="button">Export version catalog CSV</button>
+              <button id="exportAppPlan" type="button">Export review plan</button>
+              <button id="importAppPlan" type="button">Import review plan</button>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <div class="application-source" role="status">
+        <span class="source-indicator" aria-hidden="true"></span>
+        <span id="applicationSourceStatus">Import the instance's <code>sys_store_app</code> export to begin.</span>
+        <span class="source-separator" aria-hidden="true">·</span>
+        <span id="applicationMatchStatus">Version catalog not loaded</span>
+      </div>
+
+      <section class="app-metrics" aria-label="Application upgrade summary">
+        <article class="app-metric"><span>Installed apps</span><strong id="appTotalCount">0</strong><small>from the selected instance</small></article>
+        <article class="app-metric app-metric-update"><span>Update signals</span><strong id="appUpdateCount">0</strong><small>newer versions or instance flags</small></article>
+        <article class="app-metric app-metric-ready"><span>Reviews complete</span><strong id="appReviewedCount">0%</strong><small id="appReviewedDetail">no update candidates yet</small></article>
+        <article class="app-metric app-metric-unmatched"><span>Unmatched / ambiguous</span><strong id="appUnmatchedCount">0</strong><small>name mapping needs attention</small></article>
+      </section>
+
+      <section class="application-workspace" aria-label="Application inventory">
+        <div class="application-toolbar">
+          <div class="application-search">
+            <label for="applicationSearch">Search applications</label>
+            <div class="search-box"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg><input id="applicationSearch" type="search" placeholder="Name, scope, description" autocomplete="off"></div>
+          </div>
+          <label class="application-filter">Version status
+            <select id="applicationStatusFilter"><option value="all">All applications</option><option value="update">Newer version</option><option value="current">No newer version</option><option value="unmatched">No catalog match</option><option value="ambiguous">Ambiguous name</option></select>
+          </label>
+          <label class="application-filter">Review
+            <select id="applicationReviewFilter"><option value="all">All review states</option><option value="unreviewed">Needs review</option><option value="complete">Review complete</option><option value="blocker">Show stopper</option><option value="team">Team review</option></select>
+          </label>
+          <label class="application-filter">Sort
+            <select id="applicationSort"><option value="priority">Upgrade priority</option><option value="name">Name A–Z</option><option value="updates">Most versions</option><option value="decision">Decision</option></select>
+          </label>
+        </div>
+
+        <div class="application-table-wrap">
+          <table class="application-table">
+            <thead><tr><th>Application</th><th>Installed</th><th>Newer versions</th><th>Recommendation</th><th>Impact</th><th>Decision</th><th><span class="sr-only">Open review</span></th></tr></thead>
+            <tbody id="applicationRows"></tbody>
+          </table>
+          <div id="applicationEmptyState" class="application-empty">
+            <strong>Import an instance export to build your upgrade list</strong>
+            <span>Upload <code>sys_store_app</code> for installed applications and <code>sys_app_version</code> for available versions. Both files stay in this browser.</span>
+          </div>
+        </div>
+        <nav id="applicationPagination" class="application-pagination" aria-label="Application inventory pages"></nav>
+        <div class="application-table-footer"><span id="applicationResultCount">0 applications</span><span id="applicationPageStatus">Import data to review applications</span></div>
+      </section>
+      <p class="mapping-note"><strong>Matching rule:</strong> your version export has no application scope, so versions are joined by exact normalized name. Duplicate names are flagged instead of guessed. Unmatched and ambiguous apps remain visible for review.</p>
+    </section>
+
+    <section id="problemFixesWorkspacePanel" class="workspace-panel problem-fixes-panel" role="tabpanel" aria-labelledby="problemFixesWorkspaceTab" hidden>
+      <div class="problems-heading">
+        <div><p class="eyebrow">Zurich to Brazil</p><h2>Fixed problems</h2><p>Browse problem records included in the bundled patch data.</p></div>
+        <p id="problemDataStatus" class="problem-data-status" role="status">Loading bundled problem fixes</p>
+      </div>
+      <section class="problem-metrics" aria-label="Problem fix summary">
+        <article class="app-metric"><span>Problem records</span><strong id="problemTotalCount">--</strong><small>from bundled patch data</small></article>
+        <article class="app-metric app-metric-update"><span>Products</span><strong id="problemProductCount">--</strong><small>with listed fixes</small></article>
+        <article class="app-metric app-metric-ready"><span>Families</span><strong id="problemFamilyCount">--</strong><small>represented in this file</small></article>
+      </section>
+      <section class="problem-browser" aria-label="Problem fix records">
+        <div class="problem-filters">
+          <label class="problem-search">Search PRBs
+            <div class="search-box"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg><input id="problemSearch" type="search" placeholder="PRB, product, patch, description" autocomplete="off"></div>
+          </label>
+          <label class="problem-filter">Family
+            <select id="problemFamilyFilter"><option value="all">All families</option></select>
+          </label>
+          <label class="problem-filter">PRB type
+            <select id="problemTypeFilter"><option value="all">All types</option></select>
+          </label>
+          <label class="problem-filter">Sort
+            <select id="problemSort"><option value="family">Family, product</option><option value="product">Product A–Z</option><option value="prb">PRB number</option></select>
+          </label>
+          <button id="resetProblemFilters" class="problem-reset" type="button">Reset</button>
+        </div>
+        <p id="problemError" class="problem-error" role="alert" hidden></p>
+        <div class="problem-table-wrap">
+          <table class="problem-table">
+            <thead><tr><th>PRB</th><th>Product</th><th>Fixed in</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody id="problemRows"></tbody>
+          </table>
+          <div id="problemEmpty" class="application-empty" hidden><strong>No problem fixes match</strong><span>Change the search or filters to see more records.</span></div>
+        </div>
+        <nav id="problemPagination" class="application-pagination" aria-label="Problem fix pages"></nav>
+        <div class="application-table-footer"><span id="problemResultCount">Loading problem records</span><span id="problemPageStatus">Bundled CSV</span></div>
+      </section>
+    </section>
+  </main>
+
+  <dialog id="problemDetailDialog" class="problem-detail-dialog" aria-labelledby="problemDetailTitle">
+    <header class="problem-detail-header">
+      <div><p class="eyebrow">Fixed problem</p><h2 id="problemDetailTitle">PRB</h2></div>
+      <button id="closeProblemDetail" class="drawer-close" type="button" aria-label="Close problem details">×</button>
+    </header>
+    <div class="problem-detail-body">
+      <dl class="problem-detail-meta"><div><dt>Product</dt><dd id="problemDetailProduct"></dd></div><div><dt>Family</dt><dd id="problemDetailFamily"></dd></div><div><dt>Patch</dt><dd id="problemDetailPatch"></dd></div><div><dt>PRB type</dt><dd id="problemDetailType"></dd></div></dl>
+      <h3>Description</h3>
+      <pre id="problemDetailDescription"></pre>
+    </div>
+  </dialog>
+
+  <div id="appDrawerBackdrop" class="app-drawer-backdrop" hidden></div>
+  <aside id="applicationDrawer" class="application-drawer" aria-labelledby="applicationDrawerTitle" aria-hidden="true">
+    <header class="application-drawer-header">
+      <div><p class="eyebrow">Application review</p><h2 id="applicationDrawerTitle">Application</h2><code id="applicationDrawerScope"></code></div>
+      <button id="closeApplicationDrawer" class="drawer-close" type="button" aria-label="Close application review">×</button>
+    </header>
+    <form id="applicationReviewForm">
+      <div class="application-drawer-body">
+        <div class="app-version-summary">
+          <div><span>Installed version</span><strong id="drawerAppInstalledVersion">Unknown</strong></div>
+          <div><span>Newer versions</span><strong id="drawerAppVersionCount">0</strong></div>
+          <span id="drawerAppMatchBadge" class="match-badge">No catalog match</span>
+        </div>
+        <label class="drawer-field">Version to review
+          <select id="appReviewVersion"></select>
+        </label>
+        <div id="appVersionMetadata" class="app-version-metadata" hidden>
+          <div><span>Published</span><strong id="appVersionPublishDate">Not provided</strong></div>
+          <div class="app-version-dependencies"><span>Dependencies</span><strong id="appVersionDependencies">Not provided</strong></div>
+          <div class="app-version-compatibility"><span>Compatible families</span><strong id="appVersionCompatibility">Not provided</strong></div>
+          <p id="appVersionDescription"></p>
+        </div>
+        <div class="target-version-field">
+          <label class="drawer-field">Selected update target
+            <select id="appTargetVersion"></select>
+          </label>
+          <span id="appTargetStatus">Review candidate versions before selecting a target.</span>
+        </div>
+        <div class="app-review-grid">
+          <label class="drawer-field">Recommendation<select id="appRecommendation"><option value="unassessed">Not assessed</option><option value="must">Must update</option><option value="should">Should update</option><option value="can">Can update</option><option value="do_not">Do not update</option></select></label>
+          <label class="drawer-field">Impact<select id="appImpact"><option value="unassessed">Not assessed</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>
+          <label class="drawer-field">Decision<select id="appDecision"><option value="review">Not reviewed</option><option value="ready">Ready</option><option value="hold">On hold</option><option value="blocker">Show stopper</option></select></label>
+        </div>
+        <label class="drawer-field">Review owner<input id="appReviewOwner" type="text" placeholder="Team or person"></label>
+        <label class="drawer-field">Release notes<textarea id="appReviewNotes" rows="5" placeholder="Summarize impact, known issues, and testing guidance."></textarea></label>
+        <label class="drawer-field">Team validation plan<textarea id="appReviewAction" rows="4" placeholder="What should the team inspect or test?"></textarea></label>
+        <label class="app-team-check"><input id="appTeamRequired" type="checkbox">Requires team review</label>
+        <section class="related-notes" aria-labelledby="relatedNotesTitle">
+          <div><p class="eyebrow">Platform release notes</p><h3 id="relatedNotesTitle">Relevant to this application</h3></div>
+          <p class="related-notes-copy">Link notes deliberately; platform capabilities can apply without a matching Store app.</p>
+          <div class="link-note-controls"><select id="linkPlatformNote" aria-label="Choose a platform release note"><option value="">Choose a release note</option></select><button id="linkPlatformNoteButton" type="button">Link note</button></div>
+          <ul id="linkedPlatformNotes" class="linked-notes-list"><li>No notes linked yet.</li></ul>
+        </section>
+      </div>
+      <footer class="application-drawer-footer">
+        <button id="clearApplicationReview" class="clear-app-review" type="button">Clear this review</button>
+        <button class="save-app-review" type="submit">Save review</button>
+      </footer>
+    </form>
+  </aside>
+
+  <dialog id="teamBriefDialog" class="team-brief-dialog" aria-labelledby="teamBriefTitle">
+    <header class="team-brief-header">
+      <div><p class="eyebrow">Zurich → Brazil</p><h2 id="teamBriefTitle">Team upgrade brief</h2></div>
+      <button id="closeTeamBrief" class="drawer-close" type="button" aria-label="Close team brief">×</button>
+    </header>
+    <div class="team-brief-body">
+      <p class="team-brief-intro">Save the areas and individual changes your team should review, then copy a concise Markdown reading list.</p>
+      <div class="team-brief-actions">
+        <button id="copyTeamBrief" class="save-app-review" type="button">Copy Markdown</button>
+        <button id="clearTeamBrief" class="clear-app-review" type="button">Clear brief</button>
+        <span id="teamBriefStatus" role="status"></span>
+      </div>
+      <ol id="teamBriefItems" class="team-brief-items"></ol>
+      <label class="team-brief-preview-label" for="teamBriefText">Shareable brief
+        <textarea id="teamBriefText" rows="12" readonly></textarea>
+      </label>
+    </div>
+  </dialog>
+
+  <footer class="app-footer">
+    <span>Local source: <code>delta-zurich-brazil/</code></span>
+    <span id="footerStatus">Loading catalog</span>
+  </footer>
+  <script src="app.js" defer></script>
+  <script src="applications.js" defer></script>
+  <script src="problem-fixes.js" defer></script>
+  <script src="team-brief.js" defer></script>
+</body>
+</html>
