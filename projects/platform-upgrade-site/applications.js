@@ -777,7 +777,7 @@
   renderNoteChoices();
   try {
     const noteRoute = /^#(?:brazil|delta)\//.test(location.hash);
-    const initialView = noteRoute ? "notes" : location.hash === "#applications" ? "applications" : location.hash === "#problems" ? "problems" : localStorage.getItem(VIEW_KEY) || "notes";
+    const initialView = noteRoute || !location.hash ? "notes" : location.hash === "#applications" ? "applications" : location.hash === "#problems" ? "problems" : "notes";
     setWorkspace(["notes", "applications", "problems"].includes(initialView) ? initialView : "notes");
   } catch { setWorkspace("notes"); }
   restoreDatasets();

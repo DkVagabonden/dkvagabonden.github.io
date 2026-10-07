@@ -6,7 +6,7 @@
   const elements = Object.fromEntries([
     "sourceStatus", "datasetCaption", "productCount", "currentProductMetric", "visibleCount", "searchInput", "noteRelevanceFilter", "productList", "catalogMessage", "reader", "footerStatus", "brazilMode", "deltaMode"
   ].map(id => [id, document.getElementById(id)]));
-  const state = { mode: "brazil", products: [], installedApplications: [], noteSuggestions: new Map(), selectedSlug: "serviceportal", currentCanonical: "", pageToken: 0, cache: new Map(), pendingReads: new Map(), searchableText: new Map(), noteRelevance: loadNoteRelevance(), markdownLoading: false, markdownFailures: 0 };
+  const state = { mode: "brazil", products: [], installedApplications: [], noteSuggestions: new Map(), selectedSlug: "serviceportal", currentCanonical: "", pageToken: 0, cache: new Map(), sourceFormats: new Map(), pendingReads: new Map(), searchableText: new Map(), noteRelevance: loadNoteRelevance(), markdownLoading: false, markdownFailures: 0 };
 
   function loadNoteRelevance() {
     try {
@@ -26,16 +26,30 @@
   }
 
   function parseCatalog(markdown) {
-    const pattern = /\[([^\]]+)\]\(https?:\/\/raw\.githubusercontent\.com\/ServiceNow\/ServiceNowDocs\/[^)\s]+\/([^/]+-release-notes\.md)\)/g;
     const products = [];
     const seen = new Set();
+    const add = (label, filename) => {
+      const file = decodeURIComponent(filename);
+      if (seen.has(file)) return;
+      seen.add(file);
+      const name = label.replace(/\\([()])/g, "$1").replace(/^Combined\s+/i, "").replace(/\s+release notes for upgrades from Zurich to Brazil\s*$/i, "").replace(/\s+/g, " ").trim();
+      products.push({ name, file, slug: slugify(file.replace(/^brazil-zurich-/, "").replace(/-release-notes\.md$/, "")) });
+    };
+    const pattern = /\[([^\]]+)\]\(https?:\/\/raw\.githubusercontent\.com\/ServiceNow\/ServiceNowDocs\/[^)\s]+\/([^/]+-release-notes\.md)\)/g;
     let match;
     while ((match = pattern.exec(markdown))) {
-      const file = decodeURIComponent(match[2]);
-      if (seen.has(file)) continue;
-      seen.add(file);
-      const name = match[1].replace(/\\([()])/g, "$1").replace(/^Combined\s+/i, "").replace(/\s+release notes for upgrades from Zurich to Brazil\s*$/i, "").replace(/\s+/g, " ").trim();
-      products.push({ name, file, slug: slugify(file.replace(/^brazil-zurich-/, "").replace(/-release-notes\.md$/, "")) });
+      add(match[1], match[2]);
+    }
+    const html = new DOMParser().parseFromString(markdown, "text/html");
+    html.querySelectorAll('a[href^="https://raw.githubusercontent.com/ServiceNow/ServiceNowDocs/"]').forEach(link => {
+      const file = link.getAttribute("href")?.match(/\/([^/]+-release-notes\.md)(?:[?#].*)?$/)?.[1];
+      if (file) add(link.textContent || "", file);
+    });
+    if (!products.length) {
+      for (const link of html.querySelectorAll('a[href$="-release-notes.html"]')) {
+        const file = link.getAttribute("href")?.split("/").pop()?.replace(/\.html$/i, ".md");
+        if (file) add(link.textContent || "", file);
+      }
     }
     return products.sort((left, right) => left.name.localeCompare(right.name));
   }
@@ -45,10 +59,20 @@
     if (state.pendingReads.has(file)) return state.pendingReads.get(file);
     const request = (async () => {
       const response = await fetch(`${DATA_ROOT}${encodeURIComponent(file)}`);
-      if (!response.ok) throw new Error(`Could not read ${file} (${response.status})`);
-      const markdown = await response.text();
-      state.cache.set(file, markdown);
-      return markdown;
+      if (response.ok) {
+        const content = await response.text();
+        state.sourceFormats.set(file, "markdown");
+        state.cache.set(file, content);
+        return content;
+      }
+      if (response.status !== 404 || !file.toLowerCase().endsWith(".md")) throw new Error(`Could not read ${file} (${response.status})`);
+      const htmlFile = file.replace(/\.md$/i, ".html");
+      const htmlResponse = await fetch(`${DATA_ROOT}${encodeURIComponent(htmlFile)}`);
+      if (!htmlResponse.ok) throw new Error(`Could not read ${file} or its published HTML page (${response.status}/${htmlResponse.status})`);
+      const content = await htmlResponse.text();
+      state.sourceFormats.set(file, "html");
+      state.cache.set(file, content);
+      return content;
     })();
     state.pendingReads.set(file, request);
     try { return await request; }
@@ -105,6 +129,57 @@
     const wrapper = document.createElement("div");
     for (const child of parsed.body.childNodes) wrapper.append(copy(child));
     return wrapper.innerHTML;
+  }
+
+  function renderPublishedHtml(source) {
+    const parsed = new DOMParser().parseFromString(source, "text/html");
+    const content = parsed.querySelector(".markdown-body") || parsed.body;
+    const allowed = new Set(["H1", "H2", "H3", "H4", "H5", "H6", "P", "DIV", "SPAN", "A", "STRONG", "B", "EM", "I", "CODE", "PRE", "BR", "HR", "BLOCKQUOTE", "UL", "OL", "LI", "TABLE", "THEAD", "TBODY", "TFOOT", "TR", "TH", "TD", "SUP", "SUB"]);
+    const copy = node => {
+      if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.nodeValue || "");
+      if (node.nodeType !== Node.ELEMENT_NODE) return document.createDocumentFragment();
+      if (["SCRIPT", "STYLE", "IFRAME", "OBJECT", "SVG", "FORM"].includes(node.tagName)) return document.createDocumentFragment();
+      if (node.tagName === "TABLE") {
+        const wrapper = document.createElement("div");
+        wrapper.innerHTML = safeHtmlTable(node.outerHTML);
+        return wrapper;
+      }
+      if (!allowed.has(node.tagName)) {
+        const fragment = document.createDocumentFragment();
+        for (const child of node.childNodes) fragment.append(copy(child));
+        return fragment;
+      }
+      const result = document.createElement(node.tagName.toLowerCase());
+      if (/^H[1-6]$/.test(node.tagName)) {
+        const id = node.getAttribute("id");
+        result.id = id && /^[a-z0-9-]+$/i.test(id) ? id : slugify(node.textContent || "section");
+      }
+      if (node.tagName === "A") {
+        const href = node.getAttribute("href") || "";
+        if (/^https:\/\//i.test(href)) {
+          result.href = href;
+          result.target = "_blank";
+          result.rel = "noopener noreferrer";
+        }
+      }
+      if (["TH", "TD"].includes(node.tagName)) {
+        for (const key of ["colspan", "rowspan"]) if (/^\d{1,2}$/.test(node.getAttribute(key) || "")) result.setAttribute(key, node.getAttribute(key));
+      }
+      for (const child of node.childNodes) result.append(copy(child));
+      return result;
+    };
+    const wrapper = document.createElement("div");
+    for (const child of content.childNodes) wrapper.append(copy(child));
+    const sections = [...wrapper.querySelectorAll("h2")].map(heading => ({ title: heading.textContent.trim(), id: heading.id || slugify(heading.textContent) }));
+    const title = [...wrapper.querySelectorAll("h1")].map(heading => heading.textContent.trim()).find(text => !/^vagabonden$/i.test(text)) || "";
+    const canonical = parsed.querySelector('link[rel="canonical"]')?.href || "";
+    return { html: formatFeatureLists(wrapper.innerHTML), sections, title, canonical };
+  }
+
+  function searchableContent(source, file) {
+    if (state.sourceFormats.get(file) !== "html") return stripFrontmatter(source);
+    const parsed = new DOMParser().parseFromString(source, "text/html");
+    return parsed.querySelector(".markdown-body")?.textContent || parsed.body.textContent || "";
   }
 
   function inline(text) {
@@ -338,17 +413,29 @@
       let markdown = state.cache.get(product.file);
       if (!markdown) { markdown = await readMarkdown(product.file); state.cache.set(product.file, markdown); }
       if (token !== state.pageToken) return;
-      state.searchableText.set(product.slug, stripFrontmatter(markdown));
-      const metadata = getMetadata(markdown);
+      const sourceFormat = state.sourceFormats.get(product.file) || "markdown";
+      const published = sourceFormat === "html" ? renderPublishedHtml(markdown) : null;
+      state.searchableText.set(product.slug, sourceFormat === "html" ? new DOMParser().parseFromString(markdown, "text/html").querySelector(".markdown-body")?.textContent || "" : stripFrontmatter(markdown));
+      const metadata = sourceFormat === "html"
+        ? { canonical: published.canonical, updated: "" }
+        : getMetadata(markdown);
       state.currentCanonical = metadata.canonical;
-      const sourceLink = `${DATA_ROOT}${encodeURIComponent(product.file)}`;
+      const sourceFile = sourceFormat === "html" ? product.file.replace(/\.md$/i, ".html") : product.file;
+      const sourceLink = `${DATA_ROOT}${encodeURIComponent(sourceFile)}`;
+      elements.deltaMode.textContent = sourceFormat === "html" ? "Published HTML" : "Delta markdown";
       if (state.mode === "delta") {
-        elements.reader.innerHTML = `<header class="reader-header"><div class="reader-overline"><span>Delta markdown</span><span>${metadata.updated ? `Updated ${escapeHtml(metadata.updated)}` : "Zurich · Australia · Brazil"}</span></div><h2>${escapeHtml(product.name)}</h2><p class="reader-summary">Original source file: <code>${escapeHtml(product.file)}</code></p><div class="reader-toolbar">${metadata.canonical ? `<a href="${escapeHtml(metadata.canonical)}" target="_blank" rel="noopener noreferrer">Open on ServiceNow ↗</a>` : ""}<a href="${escapeHtml(sourceLink)}" target="_blank" rel="noopener noreferrer">Open local markdown file ↗</a>${relevanceControl(product.slug)}</div></header><pre class="source-markdown">${escapeHtml(markdown)}</pre>`;
+        const sourceLabel = sourceFormat === "html" ? "Published HTML representation" : "Original Markdown source";
+        const linkLabel = sourceFormat === "html" ? "Open published page ↗" : "Open bundled Markdown file ↗";
+        elements.datasetCaption.textContent = sourceFormat === "html" ? "GitHub Pages publishes Markdown as rendered HTML" : "Original Markdown from the bundled Delta archive";
+        elements.reader.innerHTML = `<header class="reader-header"><div class="reader-overline"><span>${sourceLabel}</span><span>${metadata.updated ? `Updated ${escapeHtml(metadata.updated)}` : "Zurich · Australia · Brazil"}</span></div><h2>${escapeHtml(product.name)}</h2><p class="reader-summary">Source file: <code>${escapeHtml(sourceFile)}</code>${sourceFormat === "html" ? " · GitHub Pages renders the bundled Markdown to HTML." : ""}</p><div class="reader-toolbar">${metadata.canonical ? `<a href="${escapeHtml(metadata.canonical)}" target="_blank" rel="noopener noreferrer">Open on ServiceNow ↗</a>` : ""}<a href="${escapeHtml(sourceLink)}" target="_blank" rel="noopener noreferrer">${linkLabel}</a>${relevanceControl(product.slug)}</div></header><pre class="source-markdown">${escapeHtml(markdown)}</pre>`;
       } else {
-        const rendered = renderMarkdown(markdown);
-        const title = stripFrontmatter(markdown).match(/^#\s+(.+)$/m)?.[1]?.replace(/\s*\{#[^}]+\}\s*$/, "") || `Combined ${product.name} release notes from Zurich to Brazil`;
+        const rendered = published || renderMarkdown(markdown);
+        const markdownTitle = stripFrontmatter(markdown).match(/^#\s+(.+)$/m)?.[1]?.replace(/\s*\{#[^}]+\}\s*$/, "");
+        const title = published?.title || markdownTitle || `Combined ${product.name} release notes from Zurich to Brazil`;
+        elements.datasetCaption.textContent = sourceFormat === "html" ? "Formatted from the published Markdown page" : "Formatted Zurich-to-Brazil release notes";
         const sectionNav = rendered.sections.map(section => `<a href="#${escapeHtml(section.id)}">${escapeHtml(section.title)}</a>`).join("");
-        elements.reader.innerHTML = `<header class="reader-header"><div class="reader-overline"><span>Brazil release notes</span><span>${metadata.updated ? `Updated ${escapeHtml(metadata.updated)}` : "Zurich · Australia · Brazil"}</span></div><h2>${escapeHtml(title)}</h2><p class="reader-summary">Consolidated release notes for ${escapeHtml(product.name)} from Zurich to Brazil.</p><div class="reader-toolbar">${metadata.canonical ? `<a href="${escapeHtml(metadata.canonical)}" target="_blank" rel="noopener noreferrer">Open on ServiceNow ↗</a>` : ""}<a href="${escapeHtml(sourceLink)}" target="_blank" rel="noopener noreferrer">View source markdown ↗</a>${relevanceControl(product.slug)}</div></header>${sectionNav ? `<nav class="section-nav" aria-label="Release note sections">${sectionNav}</nav>` : ""}<div class="markdown-body">${rendered.html}</div>`;
+        const sourceLabel = sourceFormat === "html" ? "View published HTML ↗" : "View source Markdown ↗";
+        elements.reader.innerHTML = `<header class="reader-header"><div class="reader-overline"><span>Brazil release notes</span><span>${metadata.updated ? `Updated ${escapeHtml(metadata.updated)}` : "Zurich · Australia · Brazil"}</span></div><h2>${escapeHtml(title)}</h2><p class="reader-summary">Consolidated release notes for ${escapeHtml(product.name)} from Zurich to Brazil.</p><div class="reader-toolbar">${metadata.canonical ? `<a href="${escapeHtml(metadata.canonical)}" target="_blank" rel="noopener noreferrer">Open on ServiceNow ↗</a>` : ""}<a href="${escapeHtml(sourceLink)}" target="_blank" rel="noopener noreferrer">${sourceLabel}</a>${relevanceControl(product.slug)}</div></header>${sectionNav ? `<nav class="section-nav" aria-label="Release note sections">${sectionNav}</nav>` : ""}<div class="markdown-body">${rendered.html}</div>`;
       }
       elements.sourceStatus.textContent = state.markdownLoading ? "Loading local Markdown files" : state.markdownFailures ? `${state.markdownFailures} Markdown files unavailable` : "Local markdown ready";
       elements.sourceStatus.previousElementSibling.classList.toggle("error", Boolean(state.markdownFailures));
@@ -374,7 +461,7 @@
         try {
           const markdown = await readMarkdown(file);
           const product = productsByFile.get(file);
-          if (product) state.searchableText.set(product.slug, stripFrontmatter(markdown));
+          if (product) state.searchableText.set(product.slug, searchableContent(markdown, file));
         } catch (error) {
           failures.push({ file, message: error.message });
         }
@@ -431,7 +518,9 @@
     } catch (error) {
       elements.sourceStatus.textContent = "Local markdown unavailable";
       elements.sourceStatus.previousElementSibling.classList.add("error");
-      elements.catalogMessage.textContent = `Could not load the local catalog: ${error.message}. Confirm delta-zurich-brazil/rn-combined-intro.md is present.`;
+      elements.catalogMessage.textContent = location.protocol === "file:"
+        ? `This browser blocked access to the bundled Markdown from file:// (${error.message}). Open the site through a localhost web server; no Markdown upload is needed.`
+        : `Could not load the local catalog: ${error.message}. Confirm delta-zurich-brazil/index.md and rn-combined-intro.md are deployed beside the site.`;
       elements.catalogMessage.hidden = false;
       elements.footerStatus.textContent = "Catalog unavailable";
       elements.reader.innerHTML = '<div class="reader-empty">No local release catalog is available.</div>';

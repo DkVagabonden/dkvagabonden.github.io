@@ -55,7 +55,7 @@ Optional version metadata columns are `publish_date`, `dependencies`, `compatibi
 
 ## Platform Upgrade Desk
 
-Platform Upgrade Desk combines an application-upgrade review with the Zurich-to-Brazil release-note reader. The product catalog and note content come only from the local markdown in `delta-zurich-brazil/`; at startup it reads `index.md` and `rn-combined-intro.md`, then preloads every Markdown file in that local manifest with bounded concurrency. Search covers the fully loaded corpus. The Brazil tab formats the source and the Delta tab shows the original file. Platform-wide notes remain browseable whether or not an application inventory contains a corresponding Store app. Users can explicitly link release notes to an application, with those links saved locally.
+Platform Upgrade Desk combines an application-upgrade review with the Zurich-to-Brazil release-note reader. The catalog and notes come from the bundled files in `projects/platform-upgrade-site/delta-zurich-brazil/`. At startup the reader loads `index.md` and `rn-combined-intro.md`, then preloads the notes in that manifest with bounded concurrency. Locally it reads raw `.md`; GitHub Pages/Jekyll publishes those same files as `.html`, so the reader falls back to the rendered Pages output when the `.md` URL is unavailable. Search covers the loaded corpus. Platform-wide notes remain browseable whether or not an application inventory contains a corresponding Store app. Users can explicitly link release notes to an application, with those links saved locally.
 
 The Markdown corpus is bundled at `projects/platform-upgrade-site/delta-zurich-brazil/`, so no visitor upload is required. Both direct local opening and GitHub Pages use the same project-relative folder path.
 
