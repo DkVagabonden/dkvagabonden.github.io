@@ -3,10 +3,12 @@
 
   const DB_NAME = "platform-upgrade-desk-data";
   const STORE_NAME = "datasets";
+  const BRAZIL_STORE_CACHE_KEY = "brazilStoreApps";
   const REVIEW_KEY = "platform-upgrade-app-reviews-v1";
   const TARGET_KEY = "platform-upgrade-app-targets-v1";
   const NOTE_LINK_KEY = "platform-upgrade-app-note-links-v1";
   const VIEW_KEY = "platform-upgrade-active-view-v1";
+  const UPGRADE_VIEW_KEY = "platform-upgrade-subview-v1";
   const PAGE_SIZE = 30;
   const labels = {
     recommendation: { unassessed: "Not assessed", must: "Must update", should: "Should update", can: "Can update", do_not: "Do not update" },
@@ -14,18 +16,18 @@
     decision: { review: "Not reviewed", ready: "Ready", hold: "On hold", blocker: "Show stopper" }
   };
   const state = {
-    installedRecords: [], versionRecords: [], duplicateRows: 0, apps: [], filteredApps: [],
+    installedRecords: [], versionRecords: [], brazilStoreRecords: [], duplicateRows: 0, brazilStoreDuplicateRows: 0, apps: [], filteredApps: [],
     versionsByScope: new Map(), versionsByName: new Map(), products: [],
     reviews: readLocalObject(REVIEW_KEY), targets: readLocalObject(TARGET_KEY), noteLinks: readLocalObject(NOTE_LINK_KEY),
     activeScope: "", activeVersion: "", page: 1, restoreToken: 0, overflowBeforeDrawer: ""
   };
   const ids = [
-    "notesWorkspaceTab", "applicationsWorkspaceTab", "problemFixesWorkspaceTab", "notesWorkspacePanel", "applicationsWorkspacePanel", "problemFixesWorkspacePanel",
-    "appInventoryInput", "appVersionsInput", "appPlanInput", "importAppInventory", "importAppVersions", "importAppPlan", "exportAppPlan", "exportInstalledApps", "exportVersionCatalog",
-    "applicationSourceStatus", "applicationMatchStatus", "appTotalCount", "appUpdateCount", "appReviewedCount", "appReviewedDetail", "appUnmatchedCount",
+    "notesWorkspaceTab", "upgradePlanWorkspaceTab", "problemFixesWorkspaceTab", "notesWorkspacePanel", "upgradePlanWorkspacePanel", "applicationsModeTab", "pluginsModeTab", "applicationsWorkspacePanel", "pluginsWorkspacePanel", "problemFixesWorkspacePanel",
+    "appInventoryInput", "appVersionsInput", "brazilStoreInput", "appPlanInput", "importAppInventory", "importAppVersions", "importBrazilStore", "importAppPlan", "exportAppPlan", "exportInstalledApps", "exportVersionCatalog", "exportBrazilStore",
+    "applicationSourceStatus", "applicationMatchStatus", "brazilStoreCatalogStatus", "appTotalCount", "appUpdateCount", "appReviewedCount", "appReviewedDetail", "appUnmatchedCount", "appBrazilCatalogAdds", "brazilCatalogAdditionsPanel", "brazilCatalogAdditionsCount", "brazilCatalogAdditionRows",
     "applicationSearch", "applicationStatusFilter", "applicationReviewFilter", "applicationSort", "applicationRows", "applicationEmptyState", "applicationResultCount", "applicationPageStatus", "applicationPagination",
     "appDrawerBackdrop", "applicationDrawer", "applicationDrawerTitle", "applicationDrawerScope", "closeApplicationDrawer", "applicationReviewForm",
-    "drawerAppInstalledVersion", "drawerAppVersionCount", "drawerAppMatchBadge", "appReviewVersion", "appVersionMetadata", "appVersionPublishDate", "appVersionDependencies", "appVersionCompatibility", "appVersionDescription",
+    "drawerAppInstalledVersion", "drawerAppVersionCount", "drawerAppMatchBadge", "appReviewVersion", "appVersionMetadata", "appVersionPublishDate", "appVersionDependencies", "appVersionCompatibility", "appVersionSource", "appVersionDescription",
     "appTargetVersion", "appTargetStatus", "appRecommendation", "appImpact", "appDecision", "appReviewOwner", "appReviewNotes", "appReviewAction", "appTeamRequired", "clearApplicationReview",
     "linkPlatformNote", "linkPlatformNoteButton", "linkedPlatformNotes"
   ];
@@ -132,7 +134,7 @@
     }
     const versions = records
       .filter(record => cleanName(record.name) && provided(record.version))
-      .map(record => ({ ...record, name: cleanName(record.name), scope: (record.scope || "").trim(), version: provided(record.version) }));
+      .map(record => ({ ...record, name: cleanName(record.name), scope: (record.scope || "").trim(), version: provided(record.version), _source: "Brazil sys_app_version" }));
     if (!versions.length) throw new Error("No application versions were found.");
     return versions;
   }
@@ -204,6 +206,14 @@
   function buildApplications() {
     buildIndexes();
     const installedNameCounts = new Map();
+    const brazilStoreByScope = new Map();
+    const brazilStoreByName = new Map();
+    for (const record of state.brazilStoreRecords) {
+      if (record.scope) brazilStoreByScope.set(record.scope, record);
+      const key = nameKey(record.name);
+      if (!brazilStoreByName.has(key)) brazilStoreByName.set(key, []);
+      brazilStoreByName.get(key).push(record);
+    }
     state.installedRecords.forEach(record => {
       const key = nameKey(record.name);
       installedNameCounts.set(key, (installedNameCounts.get(key) || 0) + 1);
@@ -212,6 +222,9 @@
       const key = nameKey(record.name);
       const scopedRecords = state.versionsByScope.get(record.scope);
       const namedRecords = state.versionsByName.get(key);
+      const brazilStoreScopeRecord = brazilStoreByScope.get(record.scope);
+      const brazilStoreNameRecord = installedNameCounts.get(key) === 1 && brazilStoreByName.get(key)?.length === 1 ? brazilStoreByName.get(key)[0] : null;
+      const brazilStoreRecord = brazilStoreScopeRecord || brazilStoreNameRecord;
       let matchStatus = "unmatched";
       let matchMethod = "";
       let matchedRecords = [];
@@ -227,16 +240,29 @@
         matchMethod = "name";
         matchedRecords = [...namedRecords.values()];
       }
+      if (matchStatus === "unmatched" && brazilStoreRecord) {
+        matchStatus = "matched";
+        matchMethod = brazilStoreScopeRecord ? "brazil-store-scope" : "brazil-store-name";
+      }
       const candidates = new Map(matchedRecords
         .filter(item => compareVersions(item.version, record.version) > 0)
         .map(item => [item.version, item]));
-      const latest = provided(record.latest_version);
-      if (latest && compareVersions(latest, record.version) > 0 && !candidates.has(latest)) {
-        candidates.set(latest, { name: record.name, scope: record.scope, version: latest, short_description: record.short_description, compatibilities: record.compatibilities, _source: "sys_store_app latest_version" });
-      }
-      if (matchStatus === "unmatched" && latest) {
-        matchStatus = "store";
-        matchMethod = "latest_version";
+      const candidateSources = [
+        [brazilStoreRecord?.version, "Brazil sys_store_app version"],
+        [brazilStoreRecord?.latest_version, "Brazil sys_store_app latest_version"]
+      ];
+      for (const [candidateValue, source] of candidateSources) {
+        const candidate = provided(candidateValue);
+        if (candidate && compareVersions(candidate, record.version) > 0 && !candidates.has(candidate)) {
+          candidates.set(candidate, {
+            name: record.name,
+            scope: record.scope,
+            version: candidate,
+            short_description: brazilStoreRecord?.short_description || record.short_description,
+            compatibilities: brazilStoreRecord?.compatibilities || record.compatibilities,
+            _source: source
+          });
+        }
       }
       return {
         ...record,
@@ -277,9 +303,8 @@
   }
 
   function matchLabel(app) {
-    if (app.matchStatus === "matched") return app.matchMethod === "scope" ? "Exact scope match" : "Legacy name match";
+    if (app.matchStatus === "matched") return app.matchMethod === "scope" ? "Exact scope match" : app.matchMethod === "brazil-store-scope" ? "Exact Brazil Store scope" : app.matchMethod === "brazil-store-name" ? "Unique Brazil Store name" : "Legacy name match";
     if (app.matchStatus === "ambiguous") return "Ambiguous name";
-    if (app.matchStatus === "store") return "Store latest version";
     return state.versionRecords.length ? "No catalog match" : "Version catalog not loaded";
   }
 
@@ -290,7 +315,7 @@
     const filtered = state.apps.filter(app => {
       const searchable = `${app.name} ${app.scope} ${app.short_description || ""}`.toLocaleLowerCase();
       const hasUpdates = hasUpdateSignal(app);
-      const isCurrent = ["matched", "store"].includes(app.matchStatus) && !hasUpdates;
+      const isCurrent = app.matchStatus === "matched" && !hasUpdates;
       const reviews = candidateReviews(app);
       return (!query || searchable.includes(query))
         && (status === "all" || status === "update" && hasUpdates || status === "current" && isCurrent || status === "unmatched" && app.matchStatus === "unmatched" || status === "ambiguous" && app.matchStatus === "ambiguous")
@@ -316,8 +341,8 @@
     const emptyTitle = elements.applicationEmptyState.querySelector("strong");
     const emptyDescription = elements.applicationEmptyState.querySelector("span");
     if (!state.apps.length) {
-      emptyTitle.textContent = "Import an instance export to build your upgrade list";
-      emptyDescription.innerHTML = 'Upload <code>sys_store_app</code> for installed applications and <code>sys_app_version</code> for available versions. Both files stay in this browser.';
+      emptyTitle.textContent = "Import your Zurich baseline to build the upgrade list";
+      emptyDescription.innerHTML = 'Import Zurich <code>sys_store_app</code> first. Then import Brazil <code>sys_app_version</code> for target candidates. Brazil <code>sys_store_app</code> is optional and supplemental; it never replaces the baseline.';
     } else if (!filtered.length) {
       emptyTitle.textContent = "No applications match these filters";
       emptyDescription.textContent = "Adjust the search or filters to see more of this inventory.";
@@ -327,16 +352,17 @@
     renderPagination(pageCount);
     renderMetrics();
     renderSourceStatus();
+    renderBrazilCatalogAdditions();
   }
 
   function renderApplicationRow(app) {
     const summary = summaryReview(app);
     const updateSignal = hasUpdateSignal(app);
     const matchClass = app.matchStatus === "ambiguous" ? "ambiguous" : app.matchStatus === "unmatched" ? "unmatched" : updateSignal ? "update" : "";
-    const latest = app.versions[0]?.version || app.latest_version || "";
+    const latest = app.versions[0]?.version || "";
     const versionText = app.versions.length
       ? `${app.versions.length} newer ${app.versions.length === 1 ? "version" : "versions"}${latest ? ` · latest ${latest}` : ""}`
-      : isTrue(app.update_available) ? "Update flagged · target unavailable" : ["matched", "store"].includes(app.matchStatus) ? "No newer version" : "Not matched";
+      : isTrue(app.update_available) ? "Update flagged · target unavailable" : app.matchStatus === "matched" ? "No newer version" : "Not matched";
     const pill = (type, text) => `<span class="app-review-pill ${escapeHtml(type)}">${escapeHtml(text)}</span>`;
     const autoUpdate = isTrue(app.auto_update) ? '<span class="app-inline-status">Auto-update</span>' : "";
     const updateFlag = isTrue(app.update_available) ? '<span class="app-inline-status update-flag">Update flagged</span>' : "";
@@ -373,45 +399,108 @@
     elements.appReviewedCount.textContent = `${totalVersions ? Math.round(reviewedVersions / totalVersions * 100) : 0}%`;
     elements.appReviewedDetail.textContent = totalVersions ? `${reviewedVersions} of ${totalVersions} version decisions` : "no update candidates yet";
     elements.appUnmatchedCount.textContent = uncertain.toLocaleString();
+    elements.appBrazilCatalogAdds.textContent = countBrazilCatalogAdditions().toLocaleString();
+  }
+
+  function countBrazilCatalogAdditions() {
+    return brazilCatalogAdditions().length;
+  }
+
+  function brazilCatalogAdditions() {
+    if (!state.installedRecords.length || !state.brazilStoreRecords.length) return [];
+    const baselineScopes = new Set(state.installedRecords.map(record => record.scope).filter(Boolean));
+    const baselineNameCounts = new Map();
+    state.installedRecords.forEach(record => {
+      const key = nameKey(record.name);
+      baselineNameCounts.set(key, (baselineNameCounts.get(key) || 0) + 1);
+    });
+    return state.brazilStoreRecords.filter(record => {
+      if (record.scope && baselineScopes.has(record.scope)) return false;
+      const key = nameKey(record.name);
+      return Boolean(key) && !baselineNameCounts.has(key);
+    }).sort((left, right) => left.name.localeCompare(right.name));
+  }
+
+  function renderBrazilCatalogAdditions() {
+    const additions = brazilCatalogAdditions();
+    elements.brazilCatalogAdditionsPanel.hidden = !state.installedRecords.length || !state.brazilStoreRecords.length;
+    elements.brazilCatalogAdditionsCount.textContent = additions.length.toLocaleString();
+    if (!elements.brazilCatalogAdditionsPanel.hidden) {
+      const visible = additions.slice(0, 100);
+      elements.brazilCatalogAdditionRows.innerHTML = visible.length
+        ? visible.map(record => `<li><span><strong>${escapeHtml(record.name)}</strong><small>${escapeHtml(record.scope || "No scope")}</small></span><span>Brazil ${escapeHtml(record.version || "Version unknown")}${provided(record.latest_version) ? ` · latest ${escapeHtml(record.latest_version)}` : ""}</span></li>`).join("")
+        : '<li class="empty-linked-note">No clearly new exact-scope or exact-name records. Ambiguous names are not counted as additions.</li>';
+      if (additions.length > visible.length) {
+        const more = document.createElement("li");
+        more.className = "empty-linked-note";
+        more.textContent = `Showing 100 of ${additions.length.toLocaleString()} catalog-only records.`;
+        elements.brazilCatalogAdditionRows.append(more);
+      }
+    }
   }
 
   function renderSourceStatus() {
     const indicator = document.querySelector(".source-indicator");
     if (!state.installedRecords.length) {
-      elements.applicationSourceStatus.innerHTML = 'Import the instance\'s <code>sys_store_app</code> export to begin.';
+      elements.applicationSourceStatus.innerHTML = 'No Zurich baseline loaded. Import Zurich <code>sys_store_app</code> first.';
       indicator.className = "source-indicator";
     } else {
       const loaded = `${state.installedRecords.length.toLocaleString()} unique app scopes loaded in this browser`;
       elements.applicationSourceStatus.textContent = state.duplicateRows ? `${loaded} · ${state.duplicateRows} duplicate scope rows consolidated` : loaded;
       indicator.className = "source-indicator ready";
     }
-    if (!state.versionRecords.length) elements.applicationMatchStatus.textContent = "Version catalog not loaded";
+    if (!state.versionRecords.length) elements.applicationMatchStatus.textContent = "Brazil sys_app_version not loaded";
     else {
       const scoped = state.apps.filter(app => app.matchStatus === "matched" && app.matchMethod === "scope").length;
       const named = state.apps.filter(app => app.matchStatus === "matched" && app.matchMethod === "name").length;
-      const storeLatest = state.apps.filter(app => app.matchStatus === "store").length;
       const uncertain = state.apps.filter(app => ["unmatched", "ambiguous"].includes(app.matchStatus)).length;
-      elements.applicationMatchStatus.textContent = `${scoped} scope history · ${storeLatest} Store latest · ${named} legacy name · ${uncertain} need mapping`;
+      const brazilStoreScopes = state.apps.filter(app => app.matchMethod === "brazil-store-scope").length;
+      elements.applicationMatchStatus.textContent = `${scoped} Brazil version scopes · ${brazilStoreScopes} Brazil Store scopes · ${named} legacy names · ${uncertain} need mapping`;
       if (uncertain) indicator.className = "source-indicator warning";
     }
+    elements.brazilStoreCatalogStatus.textContent = state.brazilStoreRecords.length
+      ? `${state.brazilStoreRecords.length.toLocaleString()} Brazil Store rows loaded · Zurich baseline unchanged · ${countBrazilCatalogAdditions().toLocaleString()} exact-name/scope catalog additions`
+      : "Brazil Store catalog not loaded. Import it separately; this will not replace your Zurich baseline.";
   }
 
   function setWorkspace(name) {
     const notes = name === "notes";
-    const applications = name === "applications";
+    const upgradePlan = name === "upgrade-plan";
     const problems = name === "problems";
     elements.notesWorkspacePanel.hidden = !notes;
-    elements.applicationsWorkspacePanel.hidden = !applications;
+    elements.upgradePlanWorkspacePanel.hidden = !upgradePlan;
     elements.problemFixesWorkspacePanel.hidden = !problems;
     elements.notesWorkspaceTab.classList.toggle("active", notes);
-    elements.applicationsWorkspaceTab.classList.toggle("active", applications);
+    elements.upgradePlanWorkspaceTab.classList.toggle("active", upgradePlan);
     elements.problemFixesWorkspaceTab.classList.toggle("active", problems);
     elements.notesWorkspaceTab.setAttribute("aria-selected", String(notes));
-    elements.applicationsWorkspaceTab.setAttribute("aria-selected", String(applications));
+    elements.upgradePlanWorkspaceTab.setAttribute("aria-selected", String(upgradePlan));
     elements.problemFixesWorkspaceTab.setAttribute("aria-selected", String(problems));
     try { localStorage.setItem(VIEW_KEY, name); } catch { /* The selected view remains usable without storage. */ }
-    if (!applications && state.activeScope) closeDrawer();
+    if (!upgradePlan && state.activeScope) closeDrawer();
+    if (!upgradePlan) window.dispatchEvent(new CustomEvent("platform-plugin-history-close"));
+    if (notes && /^#(?:applications|plugins|problems)$/.test(location.hash)) history.replaceState(null, "", `${location.pathname}${location.search}`);
+    else if (problems && location.hash !== "#problems") location.hash = "#problems";
+    if (upgradePlan) {
+      const subview = location.hash === "#plugins" ? "plugins" : location.hash === "#applications" ? "applications" : localStorage.getItem(UPGRADE_VIEW_KEY) || "applications";
+      setUpgradeView(subview === "plugins" ? "plugins" : "applications");
+    }
     if (problems) window.dispatchEvent(new CustomEvent("platform-problem-fixes-open"));
+  }
+
+  function setUpgradeView(name) {
+    const plugins = name === "plugins";
+    elements.applicationsWorkspacePanel.hidden = plugins;
+    elements.pluginsWorkspacePanel.hidden = !plugins;
+    elements.applicationsModeTab.classList.toggle("active", !plugins);
+    elements.pluginsModeTab.classList.toggle("active", plugins);
+    elements.applicationsModeTab.setAttribute("aria-selected", String(!plugins));
+    elements.pluginsModeTab.setAttribute("aria-selected", String(plugins));
+    try { localStorage.setItem(UPGRADE_VIEW_KEY, plugins ? "plugins" : "applications"); } catch { /* The chosen upgrade view remains active without storage. */ }
+    if (plugins) window.dispatchEvent(new CustomEvent("platform-plugin-history-open"));
+    else window.dispatchEvent(new CustomEvent("platform-plugin-history-close"));
+    if (plugins && state.activeScope) closeDrawer();
+    if (!/^#(?:applications|plugins)$/.test(location.hash)) location.hash = plugins ? "#plugins" : "#applications";
   }
 
   function showToast(message) {
@@ -464,6 +553,7 @@
     elements.appVersionPublishDate.textContent = provided(version?.publish_date) || "Not provided";
     elements.appVersionDependencies.textContent = provided(version?.dependencies) || "Not provided";
     elements.appVersionCompatibility.textContent = provided(version?.compatibilities) || provided(app.compatibilities) || "Not provided";
+    elements.appVersionSource.textContent = version?._source || "Installed record";
     elements.appVersionDescription.textContent = provided(version?.key_features) || provided(version?.short_description) || provided(app.short_description);
     elements.appRecommendation.value = review.recommendation;
     elements.appImpact.value = review.impact;
@@ -606,7 +696,8 @@
     const payload = {
       format: "platform-upgrade-plan", formatVersion: 1, exportedAt: new Date().toISOString(),
       applicationCount: state.apps.length, installedScopes: state.apps.map(app => app.scope),
-      reviews: state.reviews, selectedTargets: state.targets, applicationNotes: state.noteLinks, noteRelevance: readNoteRelevance(), teamBrief: readTeamBrief()
+      reviews: state.reviews, selectedTargets: state.targets, applicationNotes: state.noteLinks, noteRelevance: readNoteRelevance(), teamBrief: readTeamBrief(),
+      pluginReviews: readLocalObject("platform-upgrade-plugin-review-collections-v2"), pluginTargets: readLocalObject("platform-upgrade-plugin-target-collections-v2"), pluginHistoryLabels: readLocalObject("platform-upgrade-plugin-history-labels-v1")
     };
     downloadFile(JSON.stringify(payload, null, 2), "application/json", `platform-upgrade-plan-${new Date().toISOString().slice(0, 10)}.json`);
     showToast("Review plan exported.");
@@ -617,7 +708,7 @@
     try {
       const backup = JSON.parse(await file.text());
       if (backup.format !== "platform-upgrade-plan" || !backup.reviews || typeof backup.reviews !== "object" || Array.isArray(backup.reviews)) throw new Error("This file is not a Platform Upgrade Desk review plan.");
-      const hasWork = Object.keys(state.reviews).length || Object.keys(state.targets).length || Object.keys(state.noteLinks).length;
+      const hasWork = Object.keys(state.reviews).length || Object.keys(state.targets).length || Object.keys(state.noteLinks).length || Object.keys(readLocalObject("platform-upgrade-plugin-review-collections-v2")).length;
       if (hasWork && !window.confirm("Replace the application reviews, targets, and note links currently saved in this browser?")) return;
       state.reviews = backup.reviews;
       state.targets = backup.selectedTargets && typeof backup.selectedTargets === "object" && !Array.isArray(backup.selectedTargets) ? backup.selectedTargets : {};
@@ -627,6 +718,13 @@
         window.dispatchEvent(new CustomEvent("platform-note-relevance-restore", { detail: { values: backup.noteRelevance } }));
       }
       if (Array.isArray(backup.teamBrief)) window.dispatchEvent(new CustomEvent("platform-team-brief-restore", { detail: { items: backup.teamBrief } }));
+      window.dispatchEvent(new CustomEvent("platform-plugin-review-restore", {
+        detail: {
+          reviewCollections: backup.pluginReviews && typeof backup.pluginReviews === "object" && !Array.isArray(backup.pluginReviews) ? backup.pluginReviews : {},
+          targetCollections: backup.pluginTargets && typeof backup.pluginTargets === "object" && !Array.isArray(backup.pluginTargets) ? backup.pluginTargets : {},
+          labels: backup.pluginHistoryLabels && typeof backup.pluginHistoryLabels === "object" && !Array.isArray(backup.pluginHistoryLabels) ? backup.pluginHistoryLabels : {}
+        }
+      }));
       writeLocalObject(REVIEW_KEY, state.reviews);
       writeLocalObject(TARGET_KEY, state.targets);
       saveNoteLinks();
@@ -655,6 +753,23 @@
     finally { elements.appInventoryInput.value = ""; }
   }
 
+  async function importBrazilStoreCatalog(file) {
+    if (!file) return;
+    try {
+      if (state.brazilStoreRecords.length && !window.confirm("Replace the Brazil Store catalog currently loaded? The Zurich baseline will not change.")) return;
+      const imported = parseInstalledCsv(await file.text());
+      const hasActiveField = Object.hasOwn(imported.records[0] || {}, "active");
+      state.brazilStoreRecords = hasActiveField ? imported.records.filter(record => isTrue(record.active)) : imported.records;
+      state.brazilStoreDuplicateRows = imported.duplicateRows;
+      buildApplications();
+      try { await saveDataset(BRAZIL_STORE_CACHE_KEY, state.brazilStoreRecords, { duplicateRows: imported.duplicateRows }); }
+      catch { showToast("Brazil catalog loaded, but browser caching is unavailable."); }
+      showToast(`Loaded ${state.brazilStoreRecords.length.toLocaleString()} Brazil Store records; Zurich baseline unchanged.`);
+    } catch (error) {
+      showToast(error.message || "Could not import the Brazil Store catalog.");
+    } finally { elements.brazilStoreInput.value = ""; }
+  }
+
   async function importVersionCatalog(file) {
     if (!file) return;
     try {
@@ -672,13 +787,15 @@
   async function restoreDatasets() {
     const token = ++state.restoreToken;
     try {
-      const [installed, versions] = await Promise.all([loadDataset("installedApps"), loadDataset("appVersions")]);
-      if (token !== state.restoreToken || state.installedRecords.length || state.versionRecords.length) return;
+      const [installed, versions, brazilStore] = await Promise.all([loadDataset("installedApps"), loadDataset("appVersions"), loadDataset(BRAZIL_STORE_CACHE_KEY)]);
+      if (token !== state.restoreToken || state.installedRecords.length || state.versionRecords.length || state.brazilStoreRecords.length) return;
       state.installedRecords = Array.isArray(installed) ? installed : Array.isArray(installed?.records) ? installed.records : [];
       state.duplicateRows = Number(installed?.duplicateRows) || 0;
       state.versionRecords = Array.isArray(versions) ? versions : Array.isArray(versions?.records) ? versions.records : [];
+      state.brazilStoreRecords = Array.isArray(brazilStore) ? brazilStore : Array.isArray(brazilStore?.records) ? brazilStore.records : [];
+      state.brazilStoreDuplicateRows = Number(brazilStore?.duplicateRows) || 0;
       buildApplications();
-      if (state.installedRecords.length || state.versionRecords.length) showToast("Saved application imports restored from this browser.");
+      if (state.installedRecords.length || state.versionRecords.length || state.brazilStoreRecords.length) showToast("Saved app catalogs restored from this browser.");
     } catch {
       elements.applicationSourceStatus.textContent = "Imports remain local to this tab; browser storage is unavailable.";
     }
@@ -686,25 +803,39 @@
 
   function bindEvents() {
     elements.notesWorkspaceTab.addEventListener("click", () => setWorkspace("notes"));
-    elements.applicationsWorkspaceTab.addEventListener("click", () => setWorkspace("applications"));
+    elements.upgradePlanWorkspaceTab.addEventListener("click", () => setWorkspace("upgrade-plan"));
     elements.problemFixesWorkspaceTab.addEventListener("click", () => setWorkspace("problems"));
     document.querySelector(".workspace-tabs").addEventListener("keydown", event => {
       if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
       event.preventDefault();
-      const tabs = [elements.notesWorkspaceTab, elements.applicationsWorkspaceTab, elements.problemFixesWorkspaceTab];
+      const tabs = [elements.notesWorkspaceTab, elements.upgradePlanWorkspaceTab, elements.problemFixesWorkspaceTab];
       const index = tabs.indexOf(document.activeElement);
       const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (index + (event.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length;
       tabs[next].focus();
       tabs[next].click();
     });
+    elements.applicationsModeTab.addEventListener("click", () => setUpgradeView("applications"));
+    elements.pluginsModeTab.addEventListener("click", () => setUpgradeView("plugins"));
+    document.querySelector(".upgrade-plan-tabs").addEventListener("keydown", event => {
+      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+      event.preventDefault();
+      const tabs = [elements.applicationsModeTab, elements.pluginsModeTab];
+      const index = tabs.indexOf(document.activeElement);
+      const next = event.key === "Home" ? 0 : event.key === "End" ? 1 : (index + (event.key === "ArrowRight" ? 1 : 1)) % tabs.length;
+      tabs[next].focus();
+      tabs[next].click();
+    });
     elements.importAppInventory.addEventListener("click", () => elements.appInventoryInput.click());
     elements.importAppVersions.addEventListener("click", () => elements.appVersionsInput.click());
+    elements.importBrazilStore.addEventListener("click", () => elements.brazilStoreInput.click());
     elements.importAppPlan.addEventListener("click", () => elements.appPlanInput.click());
     elements.exportAppPlan.addEventListener("click", exportPlan);
     elements.exportInstalledApps.addEventListener("click", () => exportCsv(state.installedRecords, "sys_store_app.csv"));
     elements.exportVersionCatalog.addEventListener("click", () => exportCsv(state.versionRecords, "sys_app_version.csv"));
+    elements.exportBrazilStore.addEventListener("click", () => exportCsv(state.brazilStoreRecords, "brazil-sys_store_app.csv"));
     elements.appInventoryInput.addEventListener("change", event => importInventory(event.target.files[0]));
     elements.appVersionsInput.addEventListener("change", event => importVersionCatalog(event.target.files[0]));
+    elements.brazilStoreInput.addEventListener("change", event => importBrazilStoreCatalog(event.target.files[0]));
     elements.appPlanInput.addEventListener("change", event => importPlan(event.target.files[0]));
     elements.applicationSearch.addEventListener("input", () => { state.page = 1; renderApplications(); });
     [elements.applicationStatusFilter, elements.applicationReviewFilter, elements.applicationSort].forEach(control => control.addEventListener("change", () => { state.page = 1; renderApplications(); }));
@@ -777,8 +908,9 @@
   renderNoteChoices();
   try {
     const noteRoute = /^#(?:brazil|delta)\//.test(location.hash);
-    const initialView = noteRoute || !location.hash ? "notes" : location.hash === "#applications" ? "applications" : location.hash === "#problems" ? "problems" : "notes";
-    setWorkspace(["notes", "applications", "problems"].includes(initialView) ? initialView : "notes");
+    const initialView = noteRoute || !location.hash ? "notes" : ["#applications", "#plugins"].includes(location.hash) ? "upgrade-plan" : location.hash === "#problems" ? "problems" : "notes";
+    if (initialView === "upgrade-plan") setUpgradeView(location.hash === "#plugins" ? "plugins" : "applications");
+    setWorkspace(initialView);
   } catch { setWorkspace("notes"); }
   restoreDatasets();
 })();

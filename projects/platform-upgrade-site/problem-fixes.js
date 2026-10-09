@@ -43,8 +43,21 @@
     select.innerHTML = `<option value="all">All ${label}</option>${values.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("")}`;
   }
 
+  function productKey(value) { return String(value || "").toLocaleLowerCase().replace(/[^a-z0-9]/g, ""); }
+
+  function publishProblemIndex() {
+    const grouped = new Map();
+    for (const record of state.records) {
+      const key = productKey(record.product);
+      if (!key) continue;
+      if (!grouped.has(key)) grouped.set(key, { product: record.product, records: [] });
+      grouped.get(key).records.push({ prb: record.prb, family: record.family, patch: record.patch, type: record["prb type"] });
+    }
+    window.dispatchEvent(new CustomEvent("platform-problem-fixes-ready", { detail: { products: [...grouped.values()] } }));
+  }
+
   async function loadProblemFixes() {
-    if (state.loaded) return;
+    if (state.loaded) { publishProblemIndex(); return; }
     if (state.loading) return state.loading;
     state.loading = (async () => {
       elements.problemDataStatus.textContent = "Loading bundled problem fixes";
@@ -59,6 +72,7 @@
         }
         state.records = records.filter(record => record.prb || record.product);
         state.loaded = true;
+        publishProblemIndex();
         const families = [...new Set(state.records.map(record => record.family).filter(Boolean))].sort((left, right) => left.localeCompare(right));
         const products = new Set(state.records.map(record => record.product).filter(Boolean));
         const types = [...new Set(state.records.map(record => record["prb type"]).filter(Boolean))].sort((left, right) => left.localeCompare(right));
@@ -133,6 +147,23 @@
     elements.problemDetailDialog.showModal();
   }
 
+  async function openRequestedProblem(prb) {
+    await loadProblemFixes();
+    if (!state.loaded) return;
+    const record = state.records.find(item => item.prb === String(prb || "").trim());
+    if (!record) {
+      elements.problemError.textContent = `Problem ${prb} was not found in the bundled PRB file.`;
+      elements.problemError.hidden = false;
+      return;
+    }
+    elements.problemSearch.value = record.prb;
+    elements.problemFamilyFilter.value = "all";
+    elements.problemTypeFilter.value = "all";
+    state.page = 1;
+    render();
+    openProblem(state.records.indexOf(record));
+  }
+
   elements.problemSearch.addEventListener("input", () => { state.page = 1; render(); });
   [elements.problemFamilyFilter, elements.problemTypeFilter, elements.problemSort].forEach(control => control.addEventListener("change", () => { state.page = 1; render(); }));
   elements.resetProblemFilters.addEventListener("click", () => {
@@ -159,5 +190,7 @@
     if (event.target === elements.problemDetailDialog) elements.problemDetailDialog.close();
   });
   window.addEventListener("platform-problem-fixes-open", loadProblemFixes);
+  window.addEventListener("platform-problem-fixes-request", loadProblemFixes);
+  window.addEventListener("platform-prb-open", event => openRequestedProblem(event.detail?.prb));
   if (!elements.problemFixesWorkspacePanel.hidden) loadProblemFixes();
 })();

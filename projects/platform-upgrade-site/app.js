@@ -6,7 +6,7 @@
   const elements = Object.fromEntries([
     "sourceStatus", "datasetCaption", "productCount", "currentProductMetric", "visibleCount", "searchInput", "noteRelevanceFilter", "productList", "catalogMessage", "reader", "footerStatus", "brazilMode", "deltaMode"
   ].map(id => [id, document.getElementById(id)]));
-  const state = { mode: "brazil", products: [], installedApplications: [], noteSuggestions: new Map(), selectedSlug: "serviceportal", currentCanonical: "", pageToken: 0, cache: new Map(), sourceFormats: new Map(), pendingReads: new Map(), searchableText: new Map(), noteRelevance: loadNoteRelevance(), markdownLoading: false, markdownFailures: 0 };
+  const state = { mode: "brazil", products: [], installedApplications: [], pluginHistoryApplications: [], noteSuggestions: new Map(), selectedSlug: "serviceportal", currentCanonical: "", pageToken: 0, cache: new Map(), sourceFormats: new Map(), pendingReads: new Map(), searchableText: new Map(), noteRelevance: loadNoteRelevance(), markdownLoading: false, markdownFailures: 0 };
 
   function loadNoteRelevance() {
     try {
@@ -339,9 +339,9 @@
       elements.productList.innerHTML = `<li class="reader-empty">${escapeHtml(message)}</li>`;
     }
     if (relevance === "suggested") {
-      elements.catalogMessage.textContent = state.installedApplications.length
-        ? "Suggestions use exact installed-app name or title matches only. Review each note and mark it relevant yourself."
-        : "Import installed apps in Applications to calculate exact-name suggestions. No notes are hidden from All areas.";
+      elements.catalogMessage.textContent = state.installedApplications.length || state.pluginHistoryApplications.length
+        ? "Suggestions use exact names from installed-app inventory and plugin upgrade history. Review each note and mark it relevant yourself."
+        : "Load installed-app inventory or plugin upgrade history to calculate exact-name suggestions. No notes are hidden from All areas.";
       elements.catalogMessage.hidden = false;
     } else if (!state.markdownFailures) {
       elements.catalogMessage.hidden = true;
@@ -354,7 +354,7 @@
 
   function buildNoteSuggestions() {
     const appsByName = new Map();
-    for (const app of state.installedApplications) {
+    for (const app of [...state.installedApplications, ...state.pluginHistoryApplications]) {
       for (const value of [app.name, app.title]) {
         const key = normalizedAppName(value);
         if (!key) continue;
@@ -405,7 +405,7 @@
     if (!product) return;
     state.selectedSlug = product.slug;
     const token = ++state.pageToken;
-    location.hash = `${state.mode}/${product.slug}`;
+    if (!/^#(?:applications|plugins|problems)$/.test(location.hash)) location.hash = `${state.mode}/${product.slug}`;
     renderCatalog();
     elements.currentProductMetric.textContent = product.name;
     elements.reader.innerHTML = '<div class="reader-loading"><span class="loader" aria-hidden="true"></span><span>Loading release notes</span></div>';
@@ -566,6 +566,13 @@
   window.addEventListener("platform-installed-apps-ready", event => {
     state.installedApplications = Array.isArray(event.detail?.apps) ? event.detail.apps : [];
     buildNoteSuggestions();
+  });
+  window.addEventListener("platform-plugin-history-ready", event => {
+    state.pluginHistoryApplications = Array.isArray(event.detail?.apps) ? event.detail.apps : [];
+    buildNoteSuggestions();
+  });
+  window.addEventListener("platform-catalog-request", () => {
+    if (state.products.length) window.dispatchEvent(new CustomEvent("platform-catalog-ready", { detail: { products: state.products } }));
   });
   initialize();
 })();
