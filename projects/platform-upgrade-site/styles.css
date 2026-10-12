@@ -209,14 +209,14 @@ h1 span { padding: 0 4px; color: var(--upgrade-copper); }
 .mapping-note { margin: 10px 0 0; color: #657168; font-size: 10px; line-height: 1.5; }
 .mapping-note strong { color: #47574b; }
 .app-drawer-backdrop { position: fixed; inset: 0; z-index: 19; background: #1c2b2466; }
-.application-drawer { position: fixed; z-index: 20; top: 0; right: 0; width: min(590px, 100vw); height: 100vh; display: flex; flex-direction: column; background: var(--upgrade-paper); box-shadow: 0 12px 45px #17271f3d; transform: translateX(102%); transition: transform .22s ease; }
+.application-drawer { position: fixed; z-index: 20; top: 0; right: 0; width: min(590px, 100vw); height: 100vh; height: 100dvh; display: flex; flex-direction: column; background: var(--upgrade-paper); box-shadow: 0 12px 45px #17271f3d; transform: translateX(102%); transition: transform .22s ease; }
 .application-drawer.open { transform: translateX(0); }
 .application-drawer-header { display: flex; justify-content: space-between; gap: 16px; padding: 20px 23px 16px; border-bottom: 1px solid var(--upgrade-line); }
 .application-drawer-header h2 { margin: 0 0 4px; font-size: 19px; overflow-wrap: anywhere; }
 .application-drawer-header code { color: #748078; font: 10px "IBM Plex Mono", monospace; overflow-wrap: anywhere; }
 .drawer-close { width: 34px; height: 34px; flex: 0 0 34px; border: 1px solid #d2d9d0; background: #fff; color: #34483a; font-size: 21px; }
-#applicationReviewForm { min-height: 0; flex: 1; display: flex; flex-direction: column; }
-.application-drawer-body { min-height: 0; flex: 1; overflow: auto; padding: 17px 23px 22px; }
+#applicationReviewForm, #pluginReviewForm { min-height: 0; flex: 1; display: flex; flex-direction: column; }
+.application-drawer-body { min-height: 0; flex: 1; overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 17px 23px 22px; }
 .app-version-summary { display: grid; grid-template-columns: 1fr 1fr auto; align-items: center; gap: 12px; margin-bottom: 16px; padding: 11px; background: #f0f3ed; }
 .app-version-summary div span, .app-version-summary div strong { display: block; }
 .app-version-summary div span, .app-version-metadata span { color: #718075; font-size: 9px; }
@@ -255,7 +255,7 @@ h1 span { padding: 0 4px; color: var(--upgrade-copper); }
 .linked-notes-list button { flex: 0 0 auto; border: 0; background: transparent; color: #8a5a40; font-size: 9px; text-decoration: underline; }
 .linked-notes-list .plugin-prb-open { flex: 1; color: #315f49; text-align: left; text-decoration: none; }
 .linked-notes-list .plugin-prb-open:hover { color: #183c32; text-decoration: underline; }
-.application-drawer-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 23px; border-top: 1px solid var(--upgrade-line); background: #f8f9f4; }
+.application-drawer-footer { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 23px; border-top: 1px solid var(--upgrade-line); background: #f8f9f4; }
 .clear-app-review, .save-app-review { min-height: 35px; padding: 7px 11px; border: 1px solid #cbd3c8; background: white; color: #5c665e; font-size: 10px; font-weight: 700; }
 .clear-app-review { color: #8a4d38; }
 .save-app-review { border-color: var(--upgrade-forest); background: var(--upgrade-forest); color: white; }
@@ -471,6 +471,8 @@ h1 span { padding: 0 4px; color: var(--upgrade-copper); }
 .plugin-history-actions button:disabled { opacity: .5; cursor: default; }
 .plugin-history-label { display: flex; flex: 1 1 210px; flex-direction: column; gap: 4px; color: #58655d; font-size: 9px; font-weight: 700; }
 .plugin-history-label input { width: 100%; min-height: 35px; padding: 7px 9px; border: 1px solid #cbd3c8; border-radius: 2px; background: #fff; color: #34433a; font-size: 11px; font-weight: 400; }
+.plugin-history-label select { width: 100%; min-height: 35px; padding: 7px 9px; border: 1px solid #cbd3c8; border-radius: 2px; background: #fff; color: #34433a; font-size: 11px; font-weight: 400; }
+.plugin-saved-history-label { flex-basis: 230px; }
 .plugin-browser { border: 1px solid var(--upgrade-line); background: var(--upgrade-paper); }
 .plugin-privacy-note { margin: 0; padding: 8px 12px; border-bottom: 1px solid #e5e9e2; background: #fbfcf8; color: #68746a; font-size: 9px; line-height: 1.45; }
 .plugin-filters { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 9px; padding: 12px; border-bottom: 1px solid var(--upgrade-line); background: #f8f9f4; }

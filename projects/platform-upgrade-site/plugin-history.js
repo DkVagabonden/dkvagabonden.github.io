@@ -4,6 +4,10 @@
   const REVIEW_COLLECTIONS_KEY = "platform-upgrade-plugin-review-collections-v2";
   const TARGET_COLLECTIONS_KEY = "platform-upgrade-plugin-target-collections-v2";
   const HISTORY_LABELS_KEY = "platform-upgrade-plugin-history-labels-v1";
+  const HISTORY_DB_NAME = "platform-upgrade-desk-data";
+  const HISTORY_STORE_NAME = "datasets";
+  const HISTORY_RECORD_PREFIX = "pluginHistory:";
+  const ACTIVE_HISTORY_KEY = "platform-upgrade-plugin-active-history-v1";
   const PAGE_SIZE = 30;
   const labels = {
     recommendation: { unassessed: "Not assessed", must: "Must update", should: "Should update", can: "Can update", do_not: "Do not update" },
@@ -11,13 +15,13 @@
     decision: { review: "Not reviewed", ready: "Ready", hold: "On hold", blocker: "Show stopper" }
   };
   const elements = Object.fromEntries([
-    "pluginsWorkspacePanel", "pluginHistoryStatus", "pluginHistoryInput", "pluginHistoryLabel", "importPluginHistory", "exportPluginHistory", "pluginHistoryCount", "pluginUpgradedCount", "pluginReviewedCount", "pluginReviewedDetail", "pluginNewerCount",
+    "pluginsWorkspacePanel", "pluginHistoryStatus", "pluginHistoryInput", "pluginHistoryLabel", "importPluginHistory", "exportPluginHistory", "savedPluginHistory", "loadSavedPluginHistory", "forgetSavedPluginHistory", "pluginHistoryCount", "pluginUpgradedCount", "pluginReviewedCount", "pluginReviewedDetail", "pluginNewerCount",
     "pluginSearch", "pluginDispositionFilter", "pluginLatestFilter", "pluginReviewFilter", "pluginSort", "resetPluginFilters", "pluginHistoryError", "pluginHistoryRows", "pluginHistoryEmpty", "pluginHistoryPagination", "pluginHistoryResultCount", "pluginHistoryPageStatus",
     "pluginDrawerBackdrop", "pluginReviewDrawer", "pluginReviewTitle", "pluginReviewHistory", "closePluginReview", "pluginReviewForm", "pluginFromVersion", "pluginToVersion", "pluginDispositionBadge", "pluginReviewVersion", "pluginLatestVersion", "pluginArchive", "pluginVersionStatus", "pluginTargetVersion", "pluginTargetStatus", "pluginRecommendation", "pluginImpact", "pluginDecision", "pluginReviewOwner", "pluginReviewNotes", "pluginReviewAction", "pluginTeamRequired", "pluginRelatedNotes", "pluginRelatedPrbStatus", "pluginRelatedPrbs", "clearPluginReview"
   ].map(id => [id, document.getElementById(id)]));
   const state = {
     records: [], filtered: [], products: [], problemProducts: new Map(), problemsReady: false, reviewsByDataset: readObject(REVIEW_COLLECTIONS_KEY), targetsByDataset: readObject(TARGET_COLLECTIONS_KEY), labelsByDataset: readObject(HISTORY_LABELS_KEY),
-    reviews: {}, targets: {}, datasetId: "", datasetLabel: "", fileName: "", page: 1, loaded: false, activeKey: "", activeVersion: "", bodyOverflow: ""
+    reviews: {}, targets: {}, datasetId: "", datasetLabel: "", fileName: "", page: 1, loaded: false, restorePromise: null, savedLocally: false, activeKey: "", activeVersion: "", bodyOverflow: ""
   };
 
   function readObject(key) {
@@ -28,18 +32,90 @@
   }
 
   function saveObject(key, value) {
-    try { localStorage.setItem(key, JSON.stringify(value)); }
-    catch { elements.pluginHistoryStatus.textContent = "Browser storage is full; export the review plan to keep changes."; }
+    try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+    catch { elements.pluginHistoryStatus.textContent = "Browser storage is full; export the review plan to keep changes."; return false; }
+  }
+
+  function removeObjectEntry(key, entryKey) {
+    const stored = localStorage.getItem(key);
+    if (!stored) return;
+    const collection = JSON.parse(stored);
+    if (!collection || typeof collection !== "object" || Array.isArray(collection)) throw new Error("Saved review data could not be verified for removal.");
+    delete collection[entryKey];
+    localStorage.setItem(key, JSON.stringify(collection));
+    const verification = JSON.parse(localStorage.getItem(key) || "{}");
+    if (Object.hasOwn(verification, entryKey)) throw new Error("Saved review data could not be removed.");
+  }
+
+  function openHistoryDatabase() {
+    return new Promise((resolve, reject) => {
+      if (!window.indexedDB) { reject(new Error("Browser storage is unavailable.")); return; }
+      const request = indexedDB.open(HISTORY_DB_NAME, 1);
+      request.onupgradeneeded = () => {
+        if (!request.result.objectStoreNames.contains(HISTORY_STORE_NAME)) request.result.createObjectStore(HISTORY_STORE_NAME);
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error("Could not open browser storage."));
+    });
+  }
+
+  async function historyStoreRequest(mode, callback) {
+    const database = await openHistoryDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction(HISTORY_STORE_NAME, mode);
+      const request = callback(transaction.objectStore(HISTORY_STORE_NAME));
+      transaction.oncomplete = () => { database.close(); resolve(request?.result); };
+      transaction.onerror = () => { database.close(); reject(transaction.error || new Error("Browser storage request failed.")); };
+      transaction.onabort = () => { database.close(); reject(transaction.error || new Error("Browser storage request was canceled.")); };
+    });
+  }
+
+  function historyStorageKey(datasetId) { return `${HISTORY_RECORD_PREFIX}${datasetId}`; }
+
+  function getActiveHistoryId() {
+    try { return localStorage.getItem(ACTIVE_HISTORY_KEY) || ""; }
+    catch { return ""; }
+  }
+
+  function setActiveHistoryId(datasetId) {
+    try { localStorage.setItem(ACTIVE_HISTORY_KEY, datasetId); return true; }
+    catch { return false; }
+  }
+
+  function clearActiveHistoryId() {
+    try { localStorage.removeItem(ACTIVE_HISTORY_KEY); }
+    catch { /* A stale pointer is ignored when its saved dataset is absent. */ }
+  }
+
+  function saveHistoryDataset(datasetId, dataset) {
+    return historyStoreRequest("readwrite", store => store.put({ kind: "plugin-history", datasetId, ...dataset, savedAt: new Date().toISOString() }, historyStorageKey(datasetId)));
+  }
+
+  function readHistoryDataset(datasetId) {
+    return historyStoreRequest("readonly", store => store.get(historyStorageKey(datasetId)));
+  }
+
+  async function listHistoryDatasets() {
+    const datasets = await historyStoreRequest("readonly", store => store.getAll());
+    return (datasets || []).filter(dataset => dataset?.kind === "plugin-history").sort((left, right) => right.savedAt.localeCompare(left.savedAt));
+  }
+
+  function deleteHistoryDataset(datasetId) {
+    return historyStoreRequest("readwrite", store => store.delete(historyStorageKey(datasetId)));
   }
 
   function persistCurrentReviewData() {
-    if (!state.datasetId) return;
+    if (!state.datasetId || !state.savedLocally) return false;
     state.reviewsByDataset[state.datasetId] = state.reviews;
     state.targetsByDataset[state.datasetId] = state.targets;
     state.labelsByDataset[state.datasetId] = state.datasetLabel;
     saveObject(REVIEW_COLLECTIONS_KEY, state.reviewsByDataset);
     saveObject(TARGET_COLLECTIONS_KEY, state.targetsByDataset);
-    saveObject(HISTORY_LABELS_KEY, state.labelsByDataset);
+    return [
+      saveObject(REVIEW_COLLECTIONS_KEY, state.reviewsByDataset),
+      saveObject(TARGET_COLLECTIONS_KEY, state.targetsByDataset),
+      saveObject(HISTORY_LABELS_KEY, state.labelsByDataset)
+    ].every(Boolean);
   }
 
   async function fingerprint(text) {
@@ -170,6 +246,147 @@
     }
   }
 
+  function activateHistory(datasetId, dataset, savedLocally = true) {
+    state.records = dataset.records;
+    state.datasetId = datasetId;
+    state.datasetLabel = dataset.datasetLabel;
+    state.fileName = dataset.fileName;
+    state.savedLocally = savedLocally;
+    state.reviews = state.reviewsByDataset[datasetId] || {};
+    state.targets = state.targetsByDataset[datasetId] || {};
+    if (savedLocally) {
+      state.labelsByDataset[datasetId] = dataset.datasetLabel;
+      saveObject(HISTORY_LABELS_KEY, state.labelsByDataset);
+    }
+    state.page = 1;
+    state.loaded = true;
+    elements.pluginHistoryLabel.value = dataset.datasetLabel;
+    elements.importPluginHistory.disabled = !dataset.datasetLabel.trim();
+    elements.forgetSavedPluginHistory.disabled = !savedLocally;
+    window.dispatchEvent(new CustomEvent("platform-problem-fixes-request"));
+    window.dispatchEvent(new CustomEvent("platform-plugin-history-ready", {
+      detail: { apps: dataset.records.map(record => ({ name: record.name, archive: record.archive })) }
+    }));
+    elements.pluginHistoryCount.textContent = dataset.records.length.toLocaleString();
+    elements.pluginUpgradedCount.textContent = dataset.records.filter(record => record.disposition.toLowerCase() === "upgraded").length.toLocaleString();
+    elements.pluginHistoryStatus.textContent = `${dataset.records.length.toLocaleString()} rows · ${dataset.datasetLabel} · ${dataset.fileName} (${savedLocally ? "saved on this device" : "this session only; could not save"})`;
+    elements.exportPluginHistory.disabled = false;
+    render();
+  }
+
+  async function refreshSavedHistoryOptions(selectedId = "") {
+    const datasets = await listHistoryDatasets();
+    const options = ['<option value="">Select saved history</option>', ...datasets.map(dataset => {
+      const date = new Date(dataset.savedAt).toLocaleDateString();
+      const label = `${dataset.datasetLabel} · ${dataset.fileName} · ${date}`;
+      return `<option value="${escapeHtml(dataset.datasetId)}">${escapeHtml(label)}</option>`;
+    })];
+    elements.savedPluginHistory.innerHTML = options.join("");
+    elements.savedPluginHistory.value = datasets.some(dataset => dataset.datasetId === selectedId) ? selectedId : "";
+    elements.loadSavedPluginHistory.disabled = !elements.savedPluginHistory.value;
+    elements.forgetSavedPluginHistory.disabled = !elements.savedPluginHistory.value;
+    return datasets;
+  }
+
+  async function restoreSavedHistory() {
+    const datasets = await listHistoryDatasets();
+    const activeId = getActiveHistoryId();
+    const dataset = datasets.find(item => item.datasetId === activeId) || datasets[0];
+    await refreshSavedHistoryOptions(dataset?.datasetId || "");
+    if (!dataset) {
+      if (activeId) clearActiveHistoryId();
+      renderEmptyHistory();
+      return;
+    }
+    setActiveHistoryId(dataset.datasetId);
+    activateHistory(dataset.datasetId, dataset);
+  }
+
+  async function loadSelectedSavedHistory() {
+    const datasetId = elements.savedPluginHistory.value;
+    if (!datasetId) return;
+    try {
+      const dataset = await readHistoryDataset(datasetId);
+      if (!dataset?.records?.length) throw new Error("That saved history is no longer available.");
+      const activeSelectionSaved = setActiveHistoryId(datasetId);
+      activateHistory(datasetId, dataset);
+      await refreshSavedHistoryOptions(datasetId);
+      elements.pluginHistoryError.hidden = true;
+      if (!activeSelectionSaved) {
+        elements.pluginHistoryStatus.textContent = `${dataset.records.length.toLocaleString()} rows · ${dataset.datasetLabel} · ${dataset.fileName} (saved on this device)`;
+        elements.pluginHistoryError.textContent = "This history loaded, but the browser could not remember it as the active selection. Choose it again after reopening.";
+        elements.pluginHistoryError.hidden = false;
+      }
+    } catch (error) {
+      elements.pluginHistoryStatus.textContent = "Could not load the selected saved history.";
+      elements.pluginHistoryError.textContent = error.message || "Browser storage is unavailable.";
+      elements.pluginHistoryError.hidden = false;
+    }
+  }
+
+  function resetHistoryState() {
+    if (state.activeKey) closeReview();
+    state.records = [];
+    state.filtered = [];
+    state.reviews = {};
+    state.targets = {};
+    state.datasetId = "";
+    state.datasetLabel = "";
+    state.fileName = "";
+    state.loaded = false;
+    state.savedLocally = false;
+    elements.pluginHistoryLabel.value = "";
+    elements.importPluginHistory.disabled = true;
+    elements.pluginSearch.value = "";
+    renderEmptyHistory();
+  }
+
+  async function forgetSelectedSavedHistory() {
+    const datasetId = elements.savedPluginHistory.value;
+    if (!datasetId) return;
+    try {
+      const dataset = await readHistoryDataset(datasetId);
+      const label = dataset?.datasetLabel || "this saved history";
+      if (!window.confirm(`Remove ${label} and its local review decisions from this browser?`)) return;
+      removeObjectEntry(REVIEW_COLLECTIONS_KEY, datasetId);
+      removeObjectEntry(TARGET_COLLECTIONS_KEY, datasetId);
+      removeObjectEntry(HISTORY_LABELS_KEY, datasetId);
+      await deleteHistoryDataset(datasetId);
+      delete state.reviewsByDataset[datasetId];
+      delete state.targetsByDataset[datasetId];
+      delete state.labelsByDataset[datasetId];
+      const activeId = getActiveHistoryId();
+      const remaining = await listHistoryDatasets();
+      let switchedDataset = null;
+      let activeSelectionSaved = true;
+      if (activeId === datasetId || state.datasetId === datasetId) {
+        if (remaining.length) {
+          switchedDataset = remaining[0];
+          activeSelectionSaved = setActiveHistoryId(switchedDataset.datasetId);
+          await refreshSavedHistoryOptions(remaining[0].datasetId);
+          activateHistory(remaining[0].datasetId, remaining[0]);
+        } else {
+          clearActiveHistoryId();
+          await refreshSavedHistoryOptions();
+          resetHistoryState();
+        }
+      } else {
+        await refreshSavedHistoryOptions(state.datasetId);
+      }
+      if (switchedDataset && !activeSelectionSaved) {
+        elements.pluginHistoryStatus.textContent = `Removed ${label}; loaded ${switchedDataset.datasetLabel}, saved on this device.`;
+        elements.pluginHistoryError.textContent = "The remaining history loaded, but the browser could not remember it as the active selection. Choose it again after reopening.";
+        elements.pluginHistoryError.hidden = false;
+      } else {
+        elements.pluginHistoryStatus.textContent = `Removed ${label} and its local review decisions from this browser.`;
+      }
+    } catch (error) {
+      elements.pluginHistoryStatus.textContent = "Could not remove the saved history.";
+      elements.pluginHistoryError.textContent = error.message || "Browser storage is unavailable.";
+      elements.pluginHistoryError.hidden = false;
+    }
+  }
+
   async function importHistory(file) {
     if (!file) return;
     const datasetLabel = elements.pluginHistoryLabel.value.trim();
@@ -187,25 +404,26 @@
       const records = parseCsv(text);
       if (state.loaded && !window.confirm("Replace the history currently loaded in this browser? Saved reviews for each history file remain separated locally.")) return;
       const datasetId = await fingerprint(`${normalizeName(datasetLabel)}\n${text}`);
-      state.records = records;
-      state.datasetId = datasetId;
-      state.datasetLabel = datasetLabel;
-      state.fileName = file.name;
-      state.reviews = state.reviewsByDataset[datasetId] || {};
-      state.targets = state.targetsByDataset[datasetId] || {};
-      state.labelsByDataset[datasetId] = datasetLabel;
-      saveObject(HISTORY_LABELS_KEY, state.labelsByDataset);
-      state.page = 1;
-      state.loaded = true;
-      window.dispatchEvent(new CustomEvent("platform-problem-fixes-request"));
-      window.dispatchEvent(new CustomEvent("platform-plugin-history-ready", {
-        detail: { apps: records.map(record => ({ name: record.name, archive: record.archive })) }
-      }));
-      elements.pluginHistoryCount.textContent = records.length.toLocaleString();
-      elements.pluginUpgradedCount.textContent = records.filter(record => record.disposition.toLowerCase() === "upgraded").length.toLocaleString();
-      elements.pluginHistoryStatus.textContent = `${records.length.toLocaleString()} rows · ${datasetLabel} · ${file.name} (in memory only)`;
-      elements.exportPluginHistory.disabled = false;
-      render();
+      const dataset = { records, datasetLabel, fileName: file.name };
+      let savedLocally = false;
+      let storageError = null;
+      try {
+        await saveHistoryDataset(datasetId, dataset);
+        savedLocally = true;
+      } catch (error) { storageError = error; }
+      if (savedLocally) {
+        if (!setActiveHistoryId(datasetId)) {
+          storageError ||= new Error("The history was saved, but the active selection could not be updated.");
+          clearActiveHistoryId();
+        }
+      }
+      activateHistory(datasetId, dataset, savedLocally);
+      try { await refreshSavedHistoryOptions(datasetId); }
+      catch (error) { storageError ||= error; }
+      if (storageError) {
+        elements.pluginHistoryError.textContent = `History loaded for this session, but could not be saved in this browser: ${storageError.message || "browser storage unavailable"}`;
+        elements.pluginHistoryError.hidden = false;
+      }
     } catch (error) {
       elements.pluginHistoryStatus.textContent = "Could not import upgrade history";
       elements.pluginHistoryError.textContent = error.message || "Could not read this CSV.";
@@ -217,12 +435,22 @@
   }
 
   function loadHistory() {
-    if (state.loaded) render();
-    else renderEmptyHistory();
+    if (state.loaded) { render(); return Promise.resolve(); }
+    if (state.restorePromise) return state.restorePromise;
+    elements.pluginHistoryStatus.textContent = "Restoring history saved in this browser…";
+    state.restorePromise = restoreSavedHistory()
+      .catch(error => {
+        renderEmptyHistory();
+        elements.pluginHistoryStatus.textContent = "Could not restore saved history from this browser.";
+        elements.pluginHistoryError.textContent = error.message || "Browser storage is unavailable.";
+        elements.pluginHistoryError.hidden = false;
+      })
+      .finally(() => { state.restorePromise = null; });
+    return state.restorePromise;
   }
 
   function renderEmptyHistory() {
-    elements.pluginHistoryStatus.textContent = "No history loaded. Import your own sys_upgrade_app_version_history CSV; the file is processed only in this browser.";
+    elements.pluginHistoryStatus.textContent = "No history loaded. Import your own sys_upgrade_app_version_history CSV; the most recently used history is saved in this browser only.";
     elements.pluginHistoryCount.textContent = "--";
     elements.pluginUpgradedCount.textContent = "--";
     elements.pluginNewerCount.textContent = "--";
@@ -235,6 +463,7 @@
     elements.pluginHistoryResultCount.textContent = "No history loaded";
     elements.pluginHistoryPageStatus.textContent = "No file sent to a server";
     elements.exportPluginHistory.disabled = true;
+    elements.forgetSavedPluginHistory.disabled = true;
   }
 
   function render() {
@@ -386,20 +615,20 @@
       teamRequired: elements.pluginTeamRequired.checked,
       updatedAt: new Date().toISOString()
     };
-    persistCurrentReviewData();
+    const persisted = persistCurrentReviewData();
     updateTarget(record);
     render();
-    showPluginToast("Plugin review saved locally.");
+    showPluginToast(persisted ? "Plugin review saved on this device." : state.savedLocally ? "Plugin review kept for this session; browser storage could not save it." : "Plugin review kept for this session only.");
   }
 
   function clearReview() {
     const record = state.records.find(item => item.key === state.activeKey);
     if (!record || !state.activeVersion || !window.confirm(`Clear the review for ${record.name} ${state.activeVersion}?`)) return;
     delete state.reviews[reviewKey(record, state.activeVersion)];
-    persistCurrentReviewData();
+    const persisted = persistCurrentReviewData();
     loadReview(record);
     render();
-    showPluginToast("Plugin review cleared.");
+    showPluginToast(persisted ? "Plugin review cleared on this device." : state.savedLocally ? "Review cleared for this session; browser storage could not save the change." : "Review cleared for this session only.");
   }
 
   function renderRelatedNotes(record) {
@@ -560,6 +789,13 @@
       }
     });
     elements.importPluginHistory.disabled = !elements.pluginHistoryLabel.value.trim();
+    elements.savedPluginHistory.addEventListener("change", () => {
+      const selected = Boolean(elements.savedPluginHistory.value);
+      elements.loadSavedPluginHistory.disabled = !selected;
+      elements.forgetSavedPluginHistory.disabled = !selected;
+    });
+    elements.loadSavedPluginHistory.addEventListener("click", loadSelectedSavedHistory);
+    elements.forgetSavedPluginHistory.addEventListener("click", forgetSelectedSavedHistory);
     elements.importPluginHistory.addEventListener("click", () => {
       if (!elements.pluginHistoryLabel.value.trim()) {
         elements.pluginHistoryStatus.textContent = "Enter an instance or upgrade name before choosing a history file.";
@@ -570,7 +806,7 @@
     });
     elements.pluginHistoryLabel.addEventListener("input", () => {
       elements.importPluginHistory.disabled = !elements.pluginHistoryLabel.value.trim();
-      if (elements.pluginHistoryLabel.value.trim() && !state.loaded) elements.pluginHistoryStatus.textContent = "Choose the matching history CSV. Its contents stay in memory only.";
+      if (elements.pluginHistoryLabel.value.trim() && !state.loaded) elements.pluginHistoryStatus.textContent = "Choose the matching history CSV. It will be saved in this browser only.";
     });
     elements.pluginHistoryInput.addEventListener("change", event => importHistory(event.target.files?.[0]));
     document.getElementById("exportPluginHistory").addEventListener("click", exportHistory);

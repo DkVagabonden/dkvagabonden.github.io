@@ -180,6 +180,9 @@
         <div class="plugin-history-actions">
           <input id="pluginHistoryInput" type="file" accept=".csv,text/csv" hidden>
           <label class="plugin-history-label">Instance / upgrade name<input id="pluginHistoryLabel" type="text" placeholder="e.g. Production Zurich → Brazil" autocomplete="off"></label>
+          <label class="plugin-history-label plugin-saved-history-label">Saved on this device<select id="savedPluginHistory"><option value="">Loading saved histories</option></select></label>
+          <button id="loadSavedPluginHistory" class="action-button" type="button" disabled>Load saved history</button>
+          <button id="forgetSavedPluginHistory" class="action-button" type="button" disabled>Forget saved history</button>
           <button id="importPluginHistory" class="action-button primary-action" type="button">Choose history CSV</button>
           <button id="exportPluginHistory" class="action-button" type="button" disabled>Export filtered CSV</button>
           <p id="pluginHistoryStatus" class="problem-data-status" role="status">No instance history loaded. Choose your sys_upgrade_app_version_history CSV.</p>
@@ -202,7 +205,7 @@
           <label class="problem-filter">Sort<select id="pluginSort"><option value="priority">Upgrade priority</option><option value="name">Name A–Z</option><option value="latest">Latest version</option></select></label>
           <button id="resetPluginFilters" class="problem-reset" type="button">Reset</button>
         </div>
-        <p class="plugin-privacy-note">The selected CSV is read in memory only and is never uploaded or retained after refresh. Review decisions are saved locally in this browser, separately for each history file.</p>
+        <p class="plugin-privacy-note">The most recently used history files are saved in this browser so they can be restored between sessions; they are never uploaded. Use “Forget saved history” to remove a saved file and its local review decisions. Reviews remain separated by instance and file.</p>
         <p id="pluginHistoryError" class="problem-error" role="alert" hidden></p>
         <div class="problem-table-wrap">
           <table class="plugin-history-table"><thead><tr><th>Plugin / app</th><th>From</th><th>To</th><th>Latest</th><th>Upgrade event</th><th>Decision</th></tr></thead><tbody id="pluginHistoryRows"></tbody></table>
