@@ -24,6 +24,7 @@
   }
 
   function normalizedItem(input) {
+    if (!input || typeof input !== "object" || Array.isArray(input)) return null;
     const kind = input.kind === "feature" ? "feature" : "area";
     const slug = String(input.slug || "").trim();
     const title = String(input.title || "").trim();
@@ -125,10 +126,10 @@
     if (!item) return;
     if (!state.items.some(existing => existing.id === item.id)) {
       state.items = [...state.items, item];
-      saveItems();
     }
+    const persisted = saveItems();
     render();
-    elements.teamBriefStatus.textContent = "Saved to this browser's team brief.";
+    if (persisted) elements.teamBriefStatus.textContent = "Saved to this browser's team brief.";
   }
 
   async function copyBrief() {
@@ -151,8 +152,7 @@
     if (!state.items.length) return;
     if (!window.confirm("Remove every item from the team brief?")) return;
     state.items = [];
-    saveItems();
-    elements.teamBriefStatus.textContent = "Team brief cleared.";
+    if (saveItems()) elements.teamBriefStatus.textContent = "Team brief cleared.";
     render();
   }
 
@@ -175,8 +175,7 @@
       window.dispatchEvent(new CustomEvent("platform-note-open", { detail: { slug: open.dataset.teamBriefOpen } }));
     } else if (remove) {
       state.items = state.items.filter(item => item.id !== remove.dataset.teamBriefRemove);
-      saveItems();
-      elements.teamBriefStatus.textContent = "Item removed from the brief.";
+      if (saveItems()) elements.teamBriefStatus.textContent = "Item removed from the brief.";
       render();
     }
   });
@@ -194,9 +193,10 @@
   window.addEventListener("platform-team-brief-restore", event => {
     if (!Array.isArray(event.detail?.items)) return;
     state.items = event.detail.items.map(normalizedItem).filter(Boolean);
-    saveItems();
+    const persisted = saveItems();
+    event.detail.persisted = persisted;
     render();
-    elements.teamBriefStatus.textContent = `Restored ${state.items.length} brief items.`;
+    if (persisted) elements.teamBriefStatus.textContent = `Restored ${state.items.length} brief items.`;
   });
 
   render();

@@ -28,13 +28,13 @@
         <h1 id="pageTitle">Zurich <span aria-hidden="true">→</span> Brazil</h1>
         <p class="subtitle">Plan app upgrades, review release notes, and scan fixes in one place.</p>
       </div>
-      <a class="source-link" href="https://www.servicenow.com/docs/r/delta-zurich-brazil/rn-combined-intro.html" target="_blank" rel="noopener noreferrer">ServiceNow release overview <span aria-hidden="true">↗</span></a>
+      <a id="releaseOverviewLink" class="source-link" href="https://www.servicenow.com/docs/r/delta-zurich-brazil/rn-combined-intro.html" target="_blank" rel="noopener noreferrer">ServiceNow release overview <span aria-hidden="true">↗</span></a>
     </section>
 
     <div class="workspace-switcher">
       <div class="workspace-tabs" role="tablist" aria-label="Upgrade workspace">
         <button id="notesWorkspaceTab" class="workspace-tab active" type="button" role="tab" aria-selected="true" aria-controls="notesWorkspacePanel">Release notes</button>
-        <button id="upgradePlanWorkspaceTab" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="upgradePlanWorkspacePanel">Upgrade plan</button>
+        <button id="upgradePlanWorkspaceTab" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="upgradePlanWorkspacePanel">Application changes</button>
         <button id="problemFixesWorkspaceTab" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="problemFixesWorkspacePanel">Problem fixes</button>
       </div>
       <button id="teamBriefOpen" class="team-brief-trigger" type="button">Team brief <span id="teamBriefCount">0</span></button>
@@ -82,30 +82,30 @@
 
     <section id="upgradePlanWorkspacePanel" class="workspace-panel upgrade-plan-panel" role="tabpanel" aria-labelledby="upgradePlanWorkspaceTab" hidden>
       <div class="upgrade-plan-switcher">
-        <p>Zurich baseline and Brazil upgrade sources</p>
-        <div class="upgrade-plan-tabs" role="tablist" aria-label="Upgrade plan view">
-          <button id="applicationsModeTab" class="upgrade-plan-tab active" type="button" role="tab" aria-selected="true" aria-controls="applicationsWorkspacePanel">Baseline &amp; Brazil catalog</button>
+        <p>Installed baseline, version catalogs, and recorded archives</p>
+        <div class="upgrade-plan-tabs" role="tablist" aria-label="Application change view">
+          <button id="applicationsModeTab" class="upgrade-plan-tab active" type="button" role="tab" aria-selected="true" aria-controls="applicationsWorkspacePanel">Baseline &amp; Store catalog</button>
           <button id="pluginsModeTab" class="upgrade-plan-tab" type="button" role="tab" aria-selected="false" aria-controls="pluginsWorkspacePanel">Recorded plugin changes</button>
         </div>
       </div>
 
     <section id="applicationsWorkspacePanel" class="workspace-panel applications-panel" role="tabpanel" aria-labelledby="applicationsModeTab">
       <div class="applications-heading">
-        <div><p class="eyebrow">Application readiness</p><h2>Upgrade plan</h2><p>Start with what was installed in Zurich, compare Brazil versions, then optionally inspect the Brazil Store catalog.</p></div>
+        <div><p class="eyebrow">Application readiness</p><h2>Application changes</h2><p>Compare the installed baseline with available versions and an optional Store catalog for any release.</p></div>
         <div class="application-actions">
           <input id="appInventoryInput" type="file" accept=".csv,text/csv" hidden>
           <input id="appVersionsInput" type="file" accept=".csv,text/csv" hidden>
           <input id="brazilStoreInput" type="file" accept=".csv,text/csv" hidden>
           <input id="appPlanInput" type="file" accept=".json,application/json" hidden>
-          <button id="importAppInventory" class="action-button primary-action" type="button">Import Zurich baseline</button>
-          <button id="importAppVersions" class="action-button" type="button">Import Brazil versions</button>
-          <button id="importBrazilStore" class="action-button" type="button">Import Brazil Store catalog</button>
+          <button id="importAppInventory" class="action-button primary-action" type="button">Import installed baseline</button>
+          <button id="importAppVersions" class="action-button" type="button">Import version catalog</button>
+          <button id="importBrazilStore" class="action-button" type="button">Import Store catalog</button>
           <details class="application-menu">
             <summary class="action-button">Plan</summary>
             <div class="application-menu-panel">
               <button id="exportInstalledApps" type="button">Export installed apps CSV</button>
               <button id="exportVersionCatalog" type="button">Export version catalog CSV</button>
-              <button id="exportBrazilStore" type="button">Export Brazil Store catalog CSV</button>
+              <button id="exportBrazilStore" type="button">Export Store catalog CSV</button>
               <button id="exportAppPlan" type="button">Export review plan</button>
               <button id="importAppPlan" type="button">Import review plan</button>
             </div>
@@ -114,105 +114,146 @@
       </div>
 
       <ol class="application-source-steps" aria-label="Application data import order">
-        <li><strong>1. Zurich baseline</strong><span>Import Zurich <code>sys_store_app</code> first. This defines what was installed before the upgrade.</span></li>
-        <li><strong>2. Brazil versions</strong><span>Import Brazil <code>sys_app_version</code>. Exact scope matches add candidate versions for Zurich apps.</span></li>
-        <li><strong>3. Brazil Store catalog (optional)</strong><span>Import Brazil <code>sys_store_app</code> separately for latest versions and catalog-only entries; it never replaces the Zurich baseline.</span></li>
+        <li><strong>1. Installed baseline</strong><span>Import the instance's <code>sys_store_app</code>. This defines the installed versions being compared.</span></li>
+        <li><strong>2. Available versions</strong><span>Import <code>sys_app_version</code>. Scope matches add candidates; scope-less exports use unique names.</span></li>
+        <li><strong>3. Store catalog (optional)</strong><span>Import a separate <code>sys_store_app</code> catalog for latest versions and catalog-only entries; it never replaces the baseline.</span></li>
         <li><strong>4. Upgrade history (Plugins)</strong><span>Import this instance’s <code>sys_upgrade_app_version_history</code> when available to review what the archive recorded as Upgraded or Installed.</span></li>
       </ol>
 
       <div class="application-source" role="status">
         <span class="source-indicator" aria-hidden="true"></span>
-        <span id="applicationSourceStatus">Import Zurich’s <code>sys_store_app</code> export to set the installed baseline.</span>
+        <span id="applicationSourceStatus">Import the instance's <code>sys_store_app</code> export to set the installed baseline.</span>
         <span class="source-separator" aria-hidden="true">·</span>
         <span id="applicationMatchStatus">Version catalog not loaded</span>
       </div>
-      <div id="brazilStoreCatalogStatus" class="application-source brazil-store-status" role="status">Brazil Store catalog not loaded. Import it separately; this will not replace your Zurich baseline.</div>
+      <div id="brazilStoreCatalogStatus" class="application-source brazil-store-status" role="status">Store catalog not loaded. Import it separately; this will not replace the installed baseline.</div>
 
       <section class="app-metrics" aria-label="Application upgrade summary">
         <article class="app-metric"><span>Installed apps</span><strong id="appTotalCount">0</strong><small>from the selected instance</small></article>
         <article class="app-metric app-metric-update"><span>Update signals</span><strong id="appUpdateCount">0</strong><small>newer versions or instance flags</small></article>
         <article class="app-metric app-metric-ready"><span>Reviews complete</span><strong id="appReviewedCount">0%</strong><small id="appReviewedDetail">no update candidates yet</small></article>
         <article class="app-metric app-metric-unmatched"><span>Unmatched / ambiguous</span><strong id="appUnmatchedCount">0</strong><small>name mapping needs attention</small></article>
-        <article class="app-metric app-metric-catalog"><span>New in Brazil catalog</span><strong id="appBrazilCatalogAdds">0</strong><small>catalog-only; not confirmed installed</small></article>
       </section>
 
-      <section class="application-workspace" aria-label="Application inventory">
-        <div class="application-toolbar">
+      <section id="applicationWorkbench" class="application-workspace review-workbench" aria-label="Application inventory">
+        <aside class="review-filter-sidebar" aria-label="Application filters">
+          <div class="review-filter-heading"><h3>Filters <span data-review-active-count>0</span></h3><button id="resetApplicationFilters" class="review-filter-reset" type="button">Reset</button></div>
+          <button class="review-filter-toggle" type="button" data-review-toggle aria-controls="applicationFilterControls" aria-expanded="true">Filters <span data-review-active-count>0</span><span aria-hidden="true">&#8964;</span></button>
+          <div id="applicationFilterControls" class="review-filter-controls" data-review-controls>
+            <label class="review-select-label" for="applicationReviewMatch">Review match<select id="applicationReviewMatch" data-review-scope><option value="displayed">Displayed assessment</option><option value="any">Any version</option></select></label>
+            <div data-review-facets></div>
+            <fieldset><legend>Ownership &amp; validation</legend><div data-review-ownership></div></fieldset>
+            <label class="review-select-label" for="applicationTypeFilter">Plugin type<select id="applicationTypeFilter" data-review-type><option value="all">All types</option></select></label>
+            <label class="review-select-label" for="applicationStatusFilter">Catalog match<select id="applicationStatusFilter"><option value="all">All applications</option><option value="matched">Matched</option><option value="unmatched">No catalog match</option><option value="ambiguous">Ambiguous name</option></select></label>
+            <label class="review-select-label" for="applicationReviewFilter">Review progress<select id="applicationReviewFilter"><option value="all">All progress</option><option value="unreviewed">Needs review</option><option value="complete">Review complete</option></select></label>
+          </div>
+        </aside>
+        <div class="review-results">
+        <div class="review-results-toolbar">
           <div class="application-search">
             <label for="applicationSearch">Search applications</label>
             <div class="search-box"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg><input id="applicationSearch" type="search" placeholder="Name, scope, description" autocomplete="off"></div>
           </div>
-          <label class="application-filter">Version status
-            <select id="applicationStatusFilter"><option value="all">All applications</option><option value="update">Newer version</option><option value="current">No newer version</option><option value="unmatched">No catalog match</option><option value="ambiguous">Ambiguous name</option></select>
-          </label>
-          <label class="application-filter">Review
-            <select id="applicationReviewFilter"><option value="all">All review states</option><option value="unreviewed">Needs review</option><option value="complete">Review complete</option><option value="blocker">Show stopper</option><option value="team">Team review</option></select>
-          </label>
           <label class="application-filter">Sort
-            <select id="applicationSort"><option value="priority">Upgrade priority</option><option value="name">Name A–Z</option><option value="updates">Most versions</option><option value="decision">Decision</option></select>
+            <select id="applicationSort"><option value="priority">Upgrade priority</option><option value="recommendation">Recommendation</option><option value="name">Name A–Z</option><option value="versions">Most versions</option><option value="decision">Decision</option><option value="updated">Recently edited</option></select>
           </label>
         </div>
-
+        <div class="review-active-filters" data-review-active aria-label="Active application filters" hidden></div>
         <div class="application-table-wrap">
           <table class="application-table">
-            <thead><tr><th>Application</th><th>Zurich version</th><th>Brazil candidates</th><th>Recommendation</th><th>Impact</th><th>Decision</th><th><span class="sr-only">Open review</span></th></tr></thead>
+            <thead><tr><th>Application</th><th>Installed version</th><th>Catalog candidates</th><th>Recommendation</th><th>Impact</th><th>Decision</th><th><span class="sr-only">Open review</span></th></tr></thead>
             <tbody id="applicationRows"></tbody>
           </table>
           <div id="applicationEmptyState" class="application-empty">
             <strong>Import an instance export to build your upgrade list</strong>
-            <span>Import the Zurich <code>sys_store_app</code> baseline and Brazil <code>sys_app_version</code>. The optional Brazil <code>sys_store_app</code> catalog is supplemental and will not replace the baseline.</span>
+            <span>Import the installed <code>sys_store_app</code> baseline and a <code>sys_app_version</code> catalog. An optional Store catalog is supplemental and does not replace the baseline.</span>
+            <button class="review-filter-reset" type="button" data-review-empty-reset hidden>Clear filters</button>
           </div>
         </div>
         <nav id="applicationPagination" class="application-pagination" aria-label="Application inventory pages"></nav>
-        <div class="application-table-footer"><span id="applicationResultCount">0 applications</span><span id="applicationPageStatus">Import data to review applications</span></div>
+        <div class="application-table-footer"><span id="applicationResultCount" role="status">0 applications</span><span id="applicationPageStatus">Import data to review applications</span></div>
+        </div>
       </section>
       <details id="brazilCatalogAdditionsPanel" class="brazil-catalog-additions" hidden>
-        <summary>Brazil catalog entries absent from the Zurich baseline <span id="brazilCatalogAdditionsCount">0</span></summary>
-        <p>These are present in the Brazil Store export but absent from the Zurich baseline. Their presence does not prove they are installed or required.</p>
+        <summary>Store catalog entries absent from the installed baseline <span id="brazilCatalogAdditionsCount">0</span></summary>
+        <p><strong id="appBrazilCatalogAdds">0</strong> catalog-only apps. These are present in the Store catalog but absent from the installed baseline. Their presence does not prove they are installed or required.</p>
         <ul id="brazilCatalogAdditionRows"></ul>
       </details>
-      <p class="mapping-note"><strong>Matching rule:</strong> your version export has no application scope, so versions are joined by exact normalized name. Duplicate names are flagged instead of guessed. Unmatched and ambiguous apps remain visible for review.</p>
+      <p class="mapping-note"><strong>Matching rule:</strong> scope matches are used when available; scope-less versions use exact normalized names only when unique. Duplicate names are flagged instead of guessed. Unmatched and ambiguous apps remain visible for review.</p>
     </section>
 
     <section id="pluginsWorkspacePanel" class="workspace-panel plugins-panel" role="tabpanel" aria-labelledby="pluginsModeTab" hidden>
       <div class="plugins-heading">
         <div><p class="eyebrow">Upgrade history</p><h2>Plugins and updated Store apps</h2><p>Review your instance’s upgrade history and connect exact app-name matches to release notes.</p></div>
-        <div class="plugin-history-actions">
-          <input id="pluginHistoryInput" type="file" accept=".csv,text/csv" hidden>
-          <label class="plugin-history-label">Instance / upgrade name<input id="pluginHistoryLabel" type="text" placeholder="e.g. Production Zurich → Brazil" autocomplete="off"></label>
-          <label class="plugin-history-label plugin-saved-history-label">Saved on this device<select id="savedPluginHistory"><option value="">Loading saved histories</option></select></label>
-          <button id="loadSavedPluginHistory" class="action-button" type="button" disabled>Load saved history</button>
-          <button id="forgetSavedPluginHistory" class="action-button" type="button" disabled>Forget saved history</button>
-          <button id="importPluginHistory" class="action-button primary-action" type="button">Choose history CSV</button>
-          <button id="exportPluginHistory" class="action-button" type="button" disabled>Export filtered CSV</button>
-          <p id="pluginHistoryStatus" class="problem-data-status" role="status">No instance history loaded. Choose your sys_upgrade_app_version_history CSV.</p>
+        <div id="pluginHistoryActions" class="plugin-history-actions">
+          <input id="pluginHistoryInput" type="file" accept=".csv,text/csv" multiple hidden>
+          <input id="pluginWorkspaceInput" type="file" accept=".json,application/json" hidden>
+          <details id="pluginWorkspaceMenu" class="plugin-toolbar-menu">
+            <summary class="action-button plugin-workspace-trigger" aria-controls="pluginWorkspaceCommands"><span>Workspace</span><strong id="pluginWorkspaceName">None selected</strong></summary>
+            <div id="pluginWorkspaceCommands" class="plugin-toolbar-panel">
+              <button id="switchPluginWorkspace" type="button">Switch workspace...</button>
+              <button id="newPluginWorkspace" type="button">New workspace...</button>
+              <button id="carryPluginReviews" type="button" disabled>Add saved CSV...</button>
+              <div class="plugin-toolbar-danger"><button id="forgetSavedPluginHistory" type="button" disabled>Delete workspace...</button></div>
+            </div>
+          </details>
+          <button id="importPluginHistory" class="action-button primary-action" type="button">Add history CSVs</button>
+          <details id="pluginBackupMenu" class="plugin-toolbar-menu">
+            <summary class="action-button" aria-controls="pluginBackupCommands">Backup &amp; export</summary>
+            <div id="pluginBackupCommands" class="plugin-toolbar-panel">
+              <button id="exportPluginWorkspace" type="button" disabled>Download workspace backup <small>JSON &middot; snapshots and review history</small></button>
+              <button id="importPluginWorkspace" type="button">Restore workspace backup <small>JSON</small></button>
+              <div class="plugin-toolbar-divider"><button id="exportPluginHistory" type="button" disabled>Export filtered rows <small>CSV &middot; current table data</small></button></div>
+            </div>
+          </details>
         </div>
       </div>
-      <section class="problem-metrics" aria-label="Plugin upgrade summary">
-        <article class="app-metric"><span>Recorded apps</span><strong id="pluginHistoryCount">--</strong><small>from your imported history</small></article>
+      <div class="plugin-history-save-status">
+        <p id="pluginHistoryStatus" class="problem-data-status" role="status">No workspace selected.</p>
+        <button id="retryPluginWorkspace" class="action-button" type="button" hidden>Retry save</button>
+      </div>
+      <p id="pluginReleaseStatus" class="plugin-release-status" role="status" hidden></p>
+      <section class="problem-metrics plugin-metrics" aria-label="Plugin upgrade summary">
+        <article class="app-metric"><span>Recorded apps</span><strong id="pluginHistoryCount">--</strong><small>across all workspace snapshots</small></article>
         <article class="app-metric app-metric-update"><span>Upgraded in archive</span><strong id="pluginUpgradedCount">--</strong><small>history disposition says Upgraded</small></article>
         <article class="app-metric app-metric-ready"><span>Reviews complete</span><strong id="pluginReviewedCount">0%</strong><small id="pluginReviewedDetail">no version decisions yet</small></article>
         <article class="app-metric app-metric-unmatched"><span>Newer latest version</span><strong id="pluginNewerCount">--</strong><small>latest exceeds recorded version</small></article>
       </section>
-      <section class="plugin-browser" aria-label="Plugin upgrade history">
-        <div class="plugin-filters">
+      <details id="pluginWorkspaceHistory" class="plugin-workspace-history" hidden>
+        <summary>CSV snapshots <span id="pluginWorkspaceSnapshotCount">0</span></summary>
+        <ol id="pluginWorkspaceSnapshots"></ol>
+      </details>
+      <section id="pluginWorkbench" class="plugin-browser review-workbench" aria-label="Plugin upgrade history">
+        <aside class="review-filter-sidebar" aria-label="Plugin filters">
+          <div class="review-filter-heading"><h3>Filters <span data-review-active-count>0</span></h3><button id="resetPluginFilters" class="review-filter-reset" type="button">Reset</button></div>
+          <button class="review-filter-toggle" type="button" data-review-toggle aria-controls="pluginFilterControls" aria-expanded="true">Filters <span data-review-active-count>0</span><span aria-hidden="true">&#8964;</span></button>
+          <div id="pluginFilterControls" class="review-filter-controls" data-review-controls>
+            <label class="review-select-label" for="pluginReviewMatch">Review match<select id="pluginReviewMatch" data-review-scope><option value="displayed">Displayed assessment</option><option value="any">Any version</option></select></label>
+            <div data-review-facets></div>
+            <fieldset><legend>Ownership &amp; validation</legend><div data-review-ownership></div></fieldset>
+            <label class="review-select-label" for="pluginTypeFilter">Plugin type<select id="pluginTypeFilter" data-review-type><option value="all">All types</option></select></label>
+            <label class="review-select-label" for="pluginDispositionFilter">History<select id="pluginDispositionFilter"><option value="all">All records</option><option value="Upgraded">Upgraded</option><option value="Installed">Installed</option></select></label>
+            <label class="review-select-label" for="pluginReviewFilter">Review progress<select id="pluginReviewFilter"><option value="all">All progress</option><option value="unreviewed">Needs review</option><option value="complete">Review complete</option></select></label>
+          </div>
+        </aside>
+        <div class="review-results">
+        <div class="review-results-toolbar">
           <label class="problem-search">Search plugins
             <div class="search-box"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg><input id="pluginSearch" type="search" placeholder="Name, version, archive" autocomplete="off"></div>
           </label>
-          <label class="problem-filter">History<select id="pluginDispositionFilter"><option value="all">All records</option><option value="Upgraded">Upgraded</option><option value="Installed">Installed</option></select></label>
-          <label class="problem-filter">Latest version<select id="pluginLatestFilter"><option value="all">Any status</option><option value="newer">Newer available</option><option value="current">At latest</option></select></label>
-          <label class="problem-filter">Review<select id="pluginReviewFilter"><option value="all">All review states</option><option value="unreviewed">Needs review</option><option value="complete">Review complete</option><option value="blocker">Show stopper</option><option value="team">Team review</option></select></label>
-          <label class="problem-filter">Sort<select id="pluginSort"><option value="priority">Upgrade priority</option><option value="name">Name A–Z</option><option value="latest">Latest version</option></select></label>
-          <button id="resetPluginFilters" class="problem-reset" type="button">Reset</button>
+          <label class="problem-filter plugin-release-filter">Recorded release<select id="pluginReleaseFilter"><option value="all">All recorded releases</option></select></label>
+          <label class="problem-filter">Sort<select id="pluginSort"><option value="priority">Upgrade priority</option><option value="recommendation">Recommendation</option><option value="name">Name A–Z</option><option value="decision">Decision</option><option value="updated">Recently edited</option><option value="latest">Latest version</option></select></label>
         </div>
-        <p class="plugin-privacy-note">The most recently used history files are saved in this browser so they can be restored between sessions; they are never uploaded. Use “Forget saved history” to remove a saved file and its local review decisions. Reviews remain separated by instance and file.</p>
+        <div class="review-active-filters" data-review-active aria-label="Active plugin filters" hidden></div>
+        <p class="plugin-privacy-note">Workspace snapshots and review changes stay in this browser and are never uploaded. Each CSV adds to the workspace; previous versions and decisions remain in each plugin's History and activity.</p>
         <p id="pluginHistoryError" class="problem-error" role="alert" hidden></p>
         <div class="problem-table-wrap">
-          <table class="plugin-history-table"><thead><tr><th>Plugin / app</th><th>From</th><th>To</th><th>Latest</th><th>Upgrade event</th><th>Decision</th></tr></thead><tbody id="pluginHistoryRows"></tbody></table>
-          <div id="pluginHistoryEmpty" class="application-empty" hidden><strong>No plugin records match</strong><span>Change the search or filters to see more records.</span></div>
+          <table class="plugin-history-table"><thead><tr><th>Plugin / app</th><th>From</th><th>To</th><th>Latest</th><th>Upgrade event</th><th>Assessment</th></tr></thead><tbody id="pluginHistoryRows"></tbody></table>
+          <div id="pluginHistoryEmpty" class="application-empty" hidden><strong>No plugin records match</strong><span>Change the search or filters to see more records.</span><button class="review-filter-reset" type="button" data-review-empty-reset hidden>Clear filters</button></div>
         </div>
         <nav id="pluginHistoryPagination" class="application-pagination" aria-label="Plugin history pages"></nav>
-        <div class="application-table-footer"><span id="pluginHistoryResultCount">Loading plugin history</span><span id="pluginHistoryPageStatus">Bundled upgrade history</span></div>
+        <div class="application-table-footer"><span id="pluginHistoryResultCount" role="status">Loading plugin history</span><span id="pluginHistoryPageStatus">Bundled upgrade history</span></div>
+        </div>
       </section>
     </section>
     </section>
@@ -269,8 +310,54 @@
     </div>
   </dialog>
 
-  <div id="pluginDrawerBackdrop" class="app-drawer-backdrop" hidden></div>
-  <aside id="pluginReviewDrawer" class="application-drawer plugin-review-drawer" aria-labelledby="pluginReviewTitle" aria-hidden="true">
+  <dialog id="pluginWorkspaceDialog" class="plugin-workspace-dialog" aria-labelledby="pluginWorkspaceDialogTitle" aria-modal="true">
+    <header class="plugin-workspace-dialog-header">
+      <h2 id="pluginWorkspaceDialogTitle">Switch workspace</h2>
+      <button id="closePluginWorkspaceDialog" class="drawer-close" type="button" aria-label="Close workspace selection">&times;</button>
+    </header>
+    <form id="pluginWorkspaceForm">
+      <div class="plugin-workspace-dialog-body">
+        <label id="pluginWorkspaceNameField" class="plugin-history-label" hidden>Workspace name<input id="pluginHistoryLabel" type="text" maxlength="200" placeholder="Production Zurich to Brazil" autocomplete="off"></label>
+        <label id="pluginWorkspaceSavedField" class="plugin-history-label"><span id="pluginWorkspaceSavedLabel">Saved workspace</span><select id="savedPluginHistory"><option value="">Select workspace</option></select></label>
+        <p id="pluginWorkspaceDialogStatus" class="plugin-workspace-dialog-status" role="status"></p>
+        <p id="pluginWorkspaceDialogError" class="problem-error" role="alert" hidden></p>
+      </div>
+      <footer class="plugin-workspace-dialog-footer">
+        <button id="cancelPluginWorkspaceDialog" class="action-button" type="button">Cancel</button>
+        <button id="loadSavedPluginHistory" class="action-button primary-action" type="submit" disabled>Open workspace</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog id="pluginCarryDialog" class="plugin-carry-dialog" aria-labelledby="pluginCarryTitle" aria-modal="true">
+    <header class="plugin-carry-header">
+      <div><p class="eyebrow">Recorded plugin changes</p><h2 id="pluginCarryTitle">Carry forward reviews</h2></div>
+      <button id="closePluginCarry" class="drawer-close" type="button" aria-label="Close carry-forward preview">&times;</button>
+    </header>
+    <div class="plugin-carry-body">
+      <div class="plugin-carry-histories">
+        <label class="plugin-history-label">Source history<select id="pluginCarrySource"><option value="">Select source history</option></select></label>
+        <div class="plugin-carry-destination"><span>Active destination</span><strong id="pluginCarryDestination"></strong></div>
+      </div>
+      <p id="pluginCarryStatus" class="plugin-carry-status" role="status">Source history not selected</p>
+      <p id="pluginCarryError" class="problem-error" role="alert" hidden></p>
+      <label class="plugin-carry-bulk"><input id="pluginCarrySelectAll" type="checkbox" disabled>All transferable plugins</label>
+      <div id="pluginCarryTableWrap" class="plugin-carry-table-wrap" hidden>
+        <table class="plugin-carry-table"><thead><tr><th scope="col">Plugin / app</th><th scope="col">Source history</th><th scope="col">Active history</th><th scope="col">Transfer</th></tr></thead><tbody id="pluginCarryRows"></tbody></table>
+      </div>
+      <details id="pluginCarrySourceOnly" class="plugin-carry-source-only" hidden>
+        <summary>Only in source; not added to active history <span id="pluginCarrySourceOnlyCount">0</span></summary>
+        <ul id="pluginCarrySourceOnlyRows"></ul>
+      </details>
+    </div>
+    <footer class="plugin-carry-footer">
+      <span id="pluginCarrySelection">0 transferable plugins selected</span>
+      <button id="cancelPluginCarry" class="action-button" type="button">Cancel</button>
+      <button id="applyPluginCarry" class="action-button primary-action" type="button" disabled>Carry forward (0)</button>
+    </footer>
+  </dialog>
+
+  <dialog id="pluginReviewDrawer" class="application-drawer plugin-review-drawer" aria-labelledby="pluginReviewTitle" aria-modal="true" aria-hidden="true" inert>
     <header class="application-drawer-header">
       <div><p class="eyebrow">Plugin upgrade review</p><h2 id="pluginReviewTitle">Plugin</h2><code id="pluginReviewHistory"></code></div>
       <button id="closePluginReview" class="drawer-close" type="button" aria-label="Close plugin review">×</button>
@@ -298,15 +385,19 @@
         <label class="drawer-field">Review notes<textarea id="pluginReviewNotes" rows="5" placeholder="What changed, risks, dependencies, and upgrade considerations?"></textarea></label>
         <label class="drawer-field">Team validation plan<textarea id="pluginReviewAction" rows="4" placeholder="What should the team inspect or test?"></textarea></label>
         <label class="app-team-check"><input id="pluginTeamRequired" type="checkbox">Requires team review</label>
+        <details id="pluginReviewTimeline" class="plugin-review-timeline" hidden>
+          <summary>History and activity</summary>
+          <ol id="pluginReviewTimelineRows"></ol>
+          <button id="pluginReviewTimelineMore" class="action-button" type="button" hidden>Show earlier activity</button>
+        </details>
         <section class="related-notes" aria-labelledby="pluginRelatedNotesTitle"><div><p class="eyebrow">Exact app-name matches</p><h3 id="pluginRelatedNotesTitle">Related release notes</h3></div><p class="related-notes-copy">Suggestions match the application name exactly. They do not mark notes relevant automatically.</p><ul id="pluginRelatedNotes" class="linked-notes-list"><li>No exact release-note match.</li></ul></section>
         <section class="related-notes" aria-labelledby="pluginRelatedPrbsTitle"><div><p class="eyebrow">Exact product matches</p><h3 id="pluginRelatedPrbsTitle">Fixed problems</h3></div><p id="pluginRelatedPrbStatus" class="related-notes-copy">Loading bundled PRB index when needed.</p><ul id="pluginRelatedPrbs" class="linked-notes-list"><li>No exact PRB product match.</li></ul></section>
       </div>
       <footer class="application-drawer-footer"><button id="clearPluginReview" class="clear-app-review" type="button">Clear this review</button><button class="save-app-review" type="submit">Save review</button></footer>
     </form>
-  </aside>
+  </dialog>
 
-  <div id="appDrawerBackdrop" class="app-drawer-backdrop" hidden></div>
-  <aside id="applicationDrawer" class="application-drawer" aria-labelledby="applicationDrawerTitle" aria-hidden="true">
+  <dialog id="applicationDrawer" class="application-drawer" aria-labelledby="applicationDrawerTitle" aria-modal="true" aria-hidden="true" inert>
     <header class="application-drawer-header">
       <div><p class="eyebrow">Application review</p><h2 id="applicationDrawerTitle">Application</h2><code id="applicationDrawerScope"></code></div>
       <button id="closeApplicationDrawer" class="drawer-close" type="button" aria-label="Close application review">×</button>
@@ -355,7 +446,7 @@
         <button class="save-app-review" type="submit">Save review</button>
       </footer>
     </form>
-  </aside>
+  </dialog>
 
   <dialog id="teamBriefDialog" class="team-brief-dialog" aria-labelledby="teamBriefTitle">
     <header class="team-brief-header">
@@ -381,8 +472,10 @@
     <span id="footerStatus">Loading catalog</span>
   </footer>
   <script src="app.js" defer></script>
+  <script src="review-filters.js" defer></script>
   <script src="applications.js" defer></script>
   <script src="problem-fixes.js" defer></script>
+  <script src="plugin-history-model.js" defer></script>
   <script src="plugin-history.js" defer></script>
   <script src="team-brief.js" defer></script>
 </body>

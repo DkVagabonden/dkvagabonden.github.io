@@ -19,19 +19,33 @@
     installedRecords: [], versionRecords: [], brazilStoreRecords: [], duplicateRows: 0, brazilStoreDuplicateRows: 0, apps: [], filteredApps: [],
     versionsByScope: new Map(), versionsByName: new Map(), products: [],
     reviews: readLocalObject(REVIEW_KEY), targets: readLocalObject(TARGET_KEY), noteLinks: readLocalObject(NOTE_LINK_KEY),
-    activeScope: "", activeVersion: "", page: 1, restoreToken: 0, overflowBeforeDrawer: ""
+    activeScope: "", activeVersion: "", page: 1, restoreToken: 0, overflowBeforeDrawer: "", pluginReleaseTitle: "Application changes"
   };
   const ids = [
-    "notesWorkspaceTab", "upgradePlanWorkspaceTab", "problemFixesWorkspaceTab", "notesWorkspacePanel", "upgradePlanWorkspacePanel", "applicationsModeTab", "pluginsModeTab", "applicationsWorkspacePanel", "pluginsWorkspacePanel", "problemFixesWorkspacePanel",
+    "notesWorkspaceTab", "upgradePlanWorkspaceTab", "problemFixesWorkspaceTab", "notesWorkspacePanel", "upgradePlanWorkspacePanel", "applicationsModeTab", "pluginsModeTab", "applicationsWorkspacePanel", "pluginsWorkspacePanel", "problemFixesWorkspacePanel", "pageTitle", "releaseOverviewLink",
     "appInventoryInput", "appVersionsInput", "brazilStoreInput", "appPlanInput", "importAppInventory", "importAppVersions", "importBrazilStore", "importAppPlan", "exportAppPlan", "exportInstalledApps", "exportVersionCatalog", "exportBrazilStore",
     "applicationSourceStatus", "applicationMatchStatus", "brazilStoreCatalogStatus", "appTotalCount", "appUpdateCount", "appReviewedCount", "appReviewedDetail", "appUnmatchedCount", "appBrazilCatalogAdds", "brazilCatalogAdditionsPanel", "brazilCatalogAdditionsCount", "brazilCatalogAdditionRows",
     "applicationSearch", "applicationStatusFilter", "applicationReviewFilter", "applicationSort", "applicationRows", "applicationEmptyState", "applicationResultCount", "applicationPageStatus", "applicationPagination",
-    "appDrawerBackdrop", "applicationDrawer", "applicationDrawerTitle", "applicationDrawerScope", "closeApplicationDrawer", "applicationReviewForm",
+    "applicationDrawer", "applicationDrawerTitle", "applicationDrawerScope", "closeApplicationDrawer", "applicationReviewForm",
     "drawerAppInstalledVersion", "drawerAppVersionCount", "drawerAppMatchBadge", "appReviewVersion", "appVersionMetadata", "appVersionPublishDate", "appVersionDependencies", "appVersionCompatibility", "appVersionSource", "appVersionDescription",
     "appTargetVersion", "appTargetStatus", "appRecommendation", "appImpact", "appDecision", "appReviewOwner", "appReviewNotes", "appReviewAction", "appTeamRequired", "clearApplicationReview",
     "linkPlatformNote", "linkPlatformNoteButton", "linkedPlatformNotes"
   ];
   const elements = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
+  const releaseNoteHeading = elements.pageTitle.innerHTML;
+  const reviewFilters = window.PlatformReviewFilters;
+  let applicationFilters = null;
+
+  function updatePageHeading() {
+    if (!elements.notesWorkspacePanel.hidden) {
+      elements.pageTitle.innerHTML = releaseNoteHeading;
+      elements.releaseOverviewLink.hidden = false;
+    } else {
+      elements.pageTitle.textContent = !elements.problemFixesWorkspacePanel.hidden ? "Problem fixes"
+        : !elements.pluginsWorkspacePanel.hidden ? state.pluginReleaseTitle : "Application changes";
+      elements.releaseOverviewLink.hidden = true;
+    }
+  }
 
   function readLocalObject(key) {
     try {
@@ -134,7 +148,7 @@
     }
     const versions = records
       .filter(record => cleanName(record.name) && provided(record.version))
-      .map(record => ({ ...record, name: cleanName(record.name), scope: (record.scope || "").trim(), version: provided(record.version), _source: "Brazil sys_app_version" }));
+      .map(record => ({ ...record, name: cleanName(record.name), scope: (record.scope || "").trim(), version: provided(record.version), _source: "Imported sys_app_version" }));
     if (!versions.length) throw new Error("No application versions were found.");
     return versions;
   }
@@ -248,8 +262,8 @@
         .filter(item => compareVersions(item.version, record.version) > 0)
         .map(item => [item.version, item]));
       const candidateSources = [
-        [brazilStoreRecord?.version, "Brazil sys_store_app version"],
-        [brazilStoreRecord?.latest_version, "Brazil sys_store_app latest_version"]
+        [brazilStoreRecord?.version, "Imported sys_store_app version"],
+        [brazilStoreRecord?.latest_version, "Imported sys_store_app latest_version"]
       ];
       for (const [candidateValue, source] of candidateSources) {
         const candidate = provided(candidateValue);
@@ -297,41 +311,42 @@
   }
 
   function summaryReview(app) {
-    const reviews = app.versions.length ? candidateReviews(app) : [reviewFor(app.scope, app.version)];
-    const priority = { must: 0, do_not: 1, should: 2, unassessed: 3, can: 4 };
-    return reviews.sort((left, right) => priority[left.recommendation] - priority[right.recommendation])[0];
+    const versions = app.versions.length ? app.versions.map(record => record.version) : [app.version];
+    const reviews = versions.map(version => ({ ...reviewFor(app.scope, version), version }));
+    return reviewFilters.selectAssessment(reviews, state.targets[app.scope], compareVersions);
+  }
+
+  function applicationDescriptor(app) {
+    const prefix = `${app.scope}::`;
+    const versions = new Set([app.version, ...app.versions.map(record => record.version), ...Object.keys(state.reviews).filter(key => key.startsWith(prefix)).map(key => key.slice(prefix.length))]);
+    const reviews = [...versions].filter(Boolean).map(version => ({ ...reviewFor(app.scope, version), version }));
+    const editedAt = reviews.map(review => review.updatedAt).filter(Boolean).sort((left, right) => (Date.parse(right) || 0) - (Date.parse(left) || 0))[0] || "";
+    return {
+      id: app.scope, name: app.name, item: app, type: Object.hasOwn(reviewFilters.labels.type, app.plugin_type) ? app.plugin_type : "unknown",
+      updateStatus: hasUpdateSignal(app) ? "update" : app.matchStatus === "matched" ? "current" : "unknown",
+      searchText: `${app.name} ${app.scope} ${app.short_description || ""} ${[...versions].join(" ")}`,
+      summary: summaryReview(app), reviews, editedAt, versionCount: app.versions.length
+    };
   }
 
   function matchLabel(app) {
-    if (app.matchStatus === "matched") return app.matchMethod === "scope" ? "Exact scope match" : app.matchMethod === "brazil-store-scope" ? "Exact Brazil Store scope" : app.matchMethod === "brazil-store-name" ? "Unique Brazil Store name" : "Legacy name match";
+    if (app.matchStatus === "matched") return app.matchMethod === "scope" ? "Exact scope match" : app.matchMethod === "brazil-store-scope" ? "Exact Store catalog scope" : app.matchMethod === "brazil-store-name" ? "Unique Store catalog name" : "Legacy name match";
     if (app.matchStatus === "ambiguous") return "Ambiguous name";
     return state.versionRecords.length ? "No catalog match" : "Version catalog not loaded";
   }
 
   function renderApplications() {
-    const query = elements.applicationSearch.value.trim().toLocaleLowerCase();
     const status = elements.applicationStatusFilter.value;
     const reviewState = elements.applicationReviewFilter.value;
-    const filtered = state.apps.filter(app => {
-      const searchable = `${app.name} ${app.scope} ${app.short_description || ""}`.toLocaleLowerCase();
+    const descriptors = state.apps.map(applicationDescriptor).filter(row => {
+      const app = row.item;
       const hasUpdates = hasUpdateSignal(app);
-      const isCurrent = app.matchStatus === "matched" && !hasUpdates;
-      const reviews = candidateReviews(app);
-      return (!query || searchable.includes(query))
-        && (status === "all" || status === "update" && hasUpdates || status === "current" && isCurrent || status === "unmatched" && app.matchStatus === "unmatched" || status === "ambiguous" && app.matchStatus === "ambiguous")
-        && (reviewState === "all" || reviewState === "unreviewed" && hasUpdates && !reviewComplete(app) || reviewState === "complete" && reviewComplete(app) || reviewState === "blocker" && reviews.some(item => item.decision === "blocker") || reviewState === "team" && reviews.some(item => item.teamRequired));
+      return (status === "all" || status === "update" && hasUpdates || status === "current" && row.updateStatus === "current" || app.matchStatus === status)
+        && (reviewState === "all" || reviewState === "unreviewed" && hasUpdates && !reviewComplete(app) || reviewState === "complete" && reviewComplete(app) || reviewState === "blocker" && row.reviews.some(review => review.decision === "blocker") || reviewState === "team" && row.reviews.some(review => review.teamRequired));
     });
-    const recommendationOrder = { must: 0, do_not: 1, should: 2, unassessed: 3, can: 4 };
-    const decisionOrder = { blocker: 0, hold: 1, review: 2, ready: 3 };
-    filtered.sort((left, right) => {
-      if (elements.applicationSort.value === "name") return left.name.localeCompare(right.name);
-      if (elements.applicationSort.value === "updates") return right.versions.length - left.versions.length || left.name.localeCompare(right.name);
-      if (elements.applicationSort.value === "decision") return decisionOrder[summaryReview(left).decision] - decisionOrder[summaryReview(right).decision] || left.name.localeCompare(right.name);
-      return Number(hasUpdateSignal(right)) - Number(hasUpdateSignal(left))
-        || Number(!reviewComplete(left)) - Number(!reviewComplete(right))
-        || recommendationOrder[summaryReview(left).recommendation] - recommendationOrder[summaryReview(right).recommendation]
-        || left.name.localeCompare(right.name);
-    });
+    const filters = applicationFilters?.read() || { query: elements.applicationSearch.value };
+    const filtered = (applicationFilters ? applicationFilters.apply(descriptors) : reviewFilters.sort(descriptors.filter(row => reviewFilters.matches(row, filters)), elements.applicationSort.value)).map(row => row.item);
+    applicationFilters?.update(descriptors);
     state.filteredApps = filtered;
     const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
     state.page = Math.min(state.page, pageCount);
@@ -341,12 +356,14 @@
     const emptyTitle = elements.applicationEmptyState.querySelector("strong");
     const emptyDescription = elements.applicationEmptyState.querySelector("span");
     if (!state.apps.length) {
-      emptyTitle.textContent = "Import your Zurich baseline to build the upgrade list";
-      emptyDescription.innerHTML = 'Import Zurich <code>sys_store_app</code> first. Then import Brazil <code>sys_app_version</code> for target candidates. Brazil <code>sys_store_app</code> is optional and supplemental; it never replaces the baseline.';
+      emptyTitle.textContent = "Import your installed baseline to build the change list";
+      emptyDescription.innerHTML = 'Import installed <code>sys_store_app</code> records first. Then import <code>sys_app_version</code> for candidates. A separate Store <code>sys_store_app</code> catalog is optional and never replaces the baseline.';
     } else if (!filtered.length) {
       emptyTitle.textContent = "No applications match these filters";
       emptyDescription.textContent = "Adjust the search or filters to see more of this inventory.";
     }
+    const clearFilters = elements.applicationEmptyState.querySelector("[data-review-empty-reset]");
+    if (clearFilters) clearFilters.hidden = !state.apps.length;
     elements.applicationResultCount.textContent = `${filtered.length.toLocaleString()} of ${state.apps.length.toLocaleString()} applications`;
     elements.applicationPageStatus.textContent = filtered.length ? `Showing ${visible.length} on page ${state.page} of ${pageCount}` : "No matching applications";
     renderPagination(pageCount);
@@ -356,7 +373,8 @@
   }
 
   function renderApplicationRow(app) {
-    const summary = summaryReview(app);
+    const descriptor = applicationDescriptor(app);
+    const summary = descriptor.summary;
     const updateSignal = hasUpdateSignal(app);
     const matchClass = app.matchStatus === "ambiguous" ? "ambiguous" : app.matchStatus === "unmatched" ? "unmatched" : updateSignal ? "update" : "";
     const latest = app.versions[0]?.version || "";
@@ -366,13 +384,19 @@
     const pill = (type, text) => `<span class="app-review-pill ${escapeHtml(type)}">${escapeHtml(text)}</span>`;
     const autoUpdate = isTrue(app.auto_update) ? '<span class="app-inline-status">Auto-update</span>' : "";
     const updateFlag = isTrue(app.update_available) ? '<span class="app-inline-status update-flag">Update flagged</span>' : "";
+    const team = descriptor.reviews.some(review => review.teamRequired) ? '<span class="review-team-badge">Team review</span>' : "";
+    const warnings = descriptor.reviews.filter(review => review.version !== summary.version && (["blocker", "hold"].includes(review.decision) || review.recommendation === "do_not")).map(review => review.version);
+    const warning = warnings.length ? `<small class="review-warning">Other version warning: ${escapeHtml(warnings.join(", "))}</small>` : "";
+    const matched = reviewFilters.matchedVersions(descriptor, applicationFilters?.read() || {});
+    const match = matched.length ? `<small class="app-match-note">Matched reviews: ${escapeHtml(matched.join(", "))}</small>` : "";
+    const context = summary.version ? `${state.targets[app.scope] === summary.version ? "Target" : summary.assessed ? "Assessed" : "Version"} ${summary.version}` : "No version";
     return `<tr>
-      <td><div class="app-name-cell"><strong>${escapeHtml(app.name)}</strong><small>${escapeHtml(app.scope)}</small><span class="app-inline-statuses">${autoUpdate}${updateFlag}</span></div></td>
-      <td class="app-version-cell">${escapeHtml(app.version || "Unknown")}</td>
-      <td><span class="app-state-pill ${matchClass}">${escapeHtml(versionText)}</span><small class="app-match-note">${escapeHtml(matchLabel(app))}</small></td>
-      <td>${app.versions.length ? pill(summary.recommendation, labels.recommendation[summary.recommendation] || labels.recommendation.unassessed) : '<span class="not-applicable">Not reviewed</span>'}</td>
-      <td>${app.versions.length ? pill(summary.impact, labels.impact[summary.impact] || labels.impact.unassessed) : '<span class="not-applicable">—</span>'}</td>
-      <td>${app.versions.length ? pill(summary.decision, labels.decision[summary.decision] || labels.decision.review) : '<span class="not-applicable">—</span>'}</td>
+      <td><div class="app-name-cell"><strong>${escapeHtml(app.name)}</strong><small>${escapeHtml(app.scope)}</small><span class="app-inline-statuses">${autoUpdate}${updateFlag}</span>${team}${warning}${match}</div></td>
+      <td class="app-version-cell" data-label="Installed">${escapeHtml(app.version || "Unknown")}</td>
+      <td data-label="Catalog candidates"><span class="app-state-pill ${matchClass}">${escapeHtml(versionText)}</span><small class="app-match-note">${escapeHtml(matchLabel(app))}</small></td>
+      <td data-label="Recommendation">${pill(summary.recommendation, labels.recommendation[summary.recommendation] || labels.recommendation.unassessed)}<small class="app-match-note">${escapeHtml(context)}</small></td>
+      <td data-label="Impact">${pill(summary.impact, labels.impact[summary.impact] || labels.impact.unassessed)}</td>
+      <td data-label="Decision">${pill(summary.decision, labels.decision[summary.decision] || labels.decision.review)}${summary.owner ? `<small class="app-match-note">${escapeHtml(summary.owner)}</small>` : ""}</td>
       <td><button class="open-app-review" type="button" data-app-scope="${escapeHtml(app.scope)}" aria-label="Review ${escapeHtml(app.name)}">›</button></td>
     </tr>`;
   }
@@ -428,7 +452,7 @@
     if (!elements.brazilCatalogAdditionsPanel.hidden) {
       const visible = additions.slice(0, 100);
       elements.brazilCatalogAdditionRows.innerHTML = visible.length
-        ? visible.map(record => `<li><span><strong>${escapeHtml(record.name)}</strong><small>${escapeHtml(record.scope || "No scope")}</small></span><span>Brazil ${escapeHtml(record.version || "Version unknown")}${provided(record.latest_version) ? ` · latest ${escapeHtml(record.latest_version)}` : ""}</span></li>`).join("")
+        ? visible.map(record => `<li><span><strong>${escapeHtml(record.name)}</strong><small>${escapeHtml(record.scope || "No scope")}</small></span><span>Catalog ${escapeHtml(record.version || "Version unknown")}${provided(record.latest_version) ? ` · latest ${escapeHtml(record.latest_version)}` : ""}</span></li>`).join("")
         : '<li class="empty-linked-note">No clearly new exact-scope or exact-name records. Ambiguous names are not counted as additions.</li>';
       if (additions.length > visible.length) {
         const more = document.createElement("li");
@@ -442,25 +466,25 @@
   function renderSourceStatus() {
     const indicator = document.querySelector(".source-indicator");
     if (!state.installedRecords.length) {
-      elements.applicationSourceStatus.innerHTML = 'No Zurich baseline loaded. Import Zurich <code>sys_store_app</code> first.';
+      elements.applicationSourceStatus.innerHTML = 'No installed baseline loaded. Import <code>sys_store_app</code> first.';
       indicator.className = "source-indicator";
     } else {
       const loaded = `${state.installedRecords.length.toLocaleString()} unique app scopes loaded in this browser`;
       elements.applicationSourceStatus.textContent = state.duplicateRows ? `${loaded} · ${state.duplicateRows} duplicate scope rows consolidated` : loaded;
       indicator.className = "source-indicator ready";
     }
-    if (!state.versionRecords.length) elements.applicationMatchStatus.textContent = "Brazil sys_app_version not loaded";
+    if (!state.versionRecords.length) elements.applicationMatchStatus.textContent = "Version catalog not loaded";
     else {
       const scoped = state.apps.filter(app => app.matchStatus === "matched" && app.matchMethod === "scope").length;
       const named = state.apps.filter(app => app.matchStatus === "matched" && app.matchMethod === "name").length;
       const uncertain = state.apps.filter(app => ["unmatched", "ambiguous"].includes(app.matchStatus)).length;
       const brazilStoreScopes = state.apps.filter(app => app.matchMethod === "brazil-store-scope").length;
-      elements.applicationMatchStatus.textContent = `${scoped} Brazil version scopes · ${brazilStoreScopes} Brazil Store scopes · ${named} legacy names · ${uncertain} need mapping`;
+      elements.applicationMatchStatus.textContent = `${scoped} version catalog scopes · ${brazilStoreScopes} Store catalog scopes · ${named} legacy names · ${uncertain} need mapping`;
       if (uncertain) indicator.className = "source-indicator warning";
     }
     elements.brazilStoreCatalogStatus.textContent = state.brazilStoreRecords.length
-      ? `${state.brazilStoreRecords.length.toLocaleString()} Brazil Store rows loaded · Zurich baseline unchanged · ${countBrazilCatalogAdditions().toLocaleString()} exact-name/scope catalog additions`
-      : "Brazil Store catalog not loaded. Import it separately; this will not replace your Zurich baseline.";
+      ? `${state.brazilStoreRecords.length.toLocaleString()} Store catalog rows loaded · Installed baseline unchanged · ${countBrazilCatalogAdditions().toLocaleString()} exact-name/scope catalog additions`
+      : "Store catalog not loaded. Import it separately; this will not replace your installed baseline.";
   }
 
   function setWorkspace(name) {
@@ -486,6 +510,7 @@
       setUpgradeView(subview === "plugins" ? "plugins" : "applications");
     }
     if (problems) window.dispatchEvent(new CustomEvent("platform-problem-fixes-open"));
+    updatePageHeading();
   }
 
   function setUpgradeView(name) {
@@ -501,6 +526,7 @@
     else window.dispatchEvent(new CustomEvent("platform-plugin-history-close"));
     if (plugins && state.activeScope) closeDrawer();
     if (!/^#(?:applications|plugins)$/.test(location.hash)) location.hash = plugins ? "#plugins" : "#applications";
+    updatePageHeading();
   }
 
   function showToast(message) {
@@ -537,10 +563,11 @@
     updateTargetControl(app);
     renderNoteChoices();
     renderLinkedNotes();
-    elements.appDrawerBackdrop.hidden = false;
-    elements.applicationDrawer.classList.add("open");
+    elements.applicationDrawer.inert = false;
     elements.applicationDrawer.setAttribute("aria-hidden", "false");
     state.overflowBeforeDrawer = document.body.style.overflow;
+    elements.applicationDrawer.showModal();
+    elements.applicationDrawer.classList.add("open");
     document.body.style.overflow = "hidden";
     elements.closeApplicationDrawer.focus();
   }
@@ -579,11 +606,17 @@
   }
 
   function closeDrawer() {
+    if (!elements.applicationDrawer.open) return;
+    const scope = state.activeScope;
+    elements.applicationDrawer.close();
     elements.applicationDrawer.classList.remove("open");
     elements.applicationDrawer.setAttribute("aria-hidden", "true");
-    elements.appDrawerBackdrop.hidden = true;
+    elements.applicationDrawer.inert = true;
     document.body.style.overflow = state.overflowBeforeDrawer;
     state.activeScope = "";
+    const button = [...elements.applicationRows.querySelectorAll("[data-app-scope]")].find(node => node.dataset.appScope === scope);
+    if (button) button.focus();
+    else applicationFilters?.focusFilter();
     state.activeVersion = "";
   }
 
@@ -600,21 +633,21 @@
       teamRequired: elements.appTeamRequired.checked,
       updatedAt: new Date().toISOString()
     };
-    writeLocalObject(REVIEW_KEY, state.reviews);
+    const persisted = writeLocalObject(REVIEW_KEY, state.reviews);
     const app = state.apps.find(record => record.scope === state.activeScope);
     if (app) updateTargetControl(app);
     renderApplications();
-    showToast("Application review saved in this browser.");
+    showToast(persisted ? "Application review saved in this browser." : "Review kept for this session only. Export your review plan to keep your work.");
   }
 
   function clearReview() {
     if (!state.activeScope || !state.activeVersion || !window.confirm(`Clear the review for version ${state.activeVersion}?`)) return;
     delete state.reviews[reviewKey(state.activeScope, state.activeVersion)];
-    writeLocalObject(REVIEW_KEY, state.reviews);
+    const persisted = writeLocalObject(REVIEW_KEY, state.reviews);
     const app = state.apps.find(record => record.scope === state.activeScope);
-    if (app) loadActiveReview(app);
+    if (app) { loadActiveReview(app); updateTargetControl(app); }
     renderApplications();
-    showToast("Version review cleared.");
+    showToast(persisted ? "Version review cleared." : "Review cleared for this session only; browser storage could not save the change.");
   }
 
   function renderNoteChoices() {
@@ -634,18 +667,18 @@
       : '<li class="empty-linked-note">No notes linked yet.</li>';
   }
 
-  function saveNoteLinks() { writeLocalObject(NOTE_LINK_KEY, state.noteLinks); }
+  function saveNoteLinks() { return writeLocalObject(NOTE_LINK_KEY, state.noteLinks); }
 
   function linkSelectedNote() {
     if (!state.activeScope || !elements.linkPlatformNote.value) return;
     const slug = elements.linkPlatformNote.value;
     const links = Array.isArray(state.noteLinks[state.activeScope]) ? state.noteLinks[state.activeScope] : [];
     if (!links.includes(slug)) state.noteLinks[state.activeScope] = [...links, slug];
-    saveNoteLinks();
+    const persisted = saveNoteLinks();
     window.dispatchEvent(new CustomEvent("platform-note-relevance-update", { detail: { slug, status: "relevant" } }));
     renderLinkedNotes();
     elements.linkPlatformNote.value = "";
-    showToast("Release note linked to this application.");
+    showToast(persisted ? "Release note linked to this application." : "Note linked for this session only; browser storage could not save the link.");
   }
 
   function openLinkedNote(slug) {
@@ -671,7 +704,7 @@
     const headers = [...new Set(records.flatMap(record => Object.keys(record)))];
     const encode = value => {
       let text = String(value ?? "");
-      if (/^[=+\-@]/.test(text)) text = `'${text}`;
+      if (/^[\s\u0000-\u001f]*[=+\-@]|^[\u0000-\u001f]/.test(text)) text = `'${text}`;
       return `"${text.replace(/"/g, '""')}"`;
     };
     const csv = [headers.map(encode).join(","), ...records.map(record => headers.map(header => encode(record[header])).join(","))].join("\r\n");
@@ -692,15 +725,20 @@
     } catch { return []; }
   }
 
-  function exportPlan() {
-    const payload = {
-      format: "platform-upgrade-plan", formatVersion: 1, exportedAt: new Date().toISOString(),
-      applicationCount: state.apps.length, installedScopes: state.apps.map(app => app.scope),
-      reviews: state.reviews, selectedTargets: state.targets, applicationNotes: state.noteLinks, noteRelevance: readNoteRelevance(), teamBrief: readTeamBrief(),
-      pluginReviews: readLocalObject("platform-upgrade-plugin-review-collections-v2"), pluginTargets: readLocalObject("platform-upgrade-plugin-target-collections-v2"), pluginHistoryLabels: readLocalObject("platform-upgrade-plugin-history-labels-v1")
-    };
-    downloadFile(JSON.stringify(payload, null, 2), "application/json", `platform-upgrade-plan-${new Date().toISOString().slice(0, 10)}.json`);
-    showToast("Review plan exported.");
+  async function exportPlan() {
+    try {
+      const detail = {};
+      window.dispatchEvent(new CustomEvent("platform-plugin-workspace-backup", { detail }));
+      const pluginWorkspaces = detail.promise ? await detail.promise : [];
+      const payload = {
+        format: "platform-upgrade-plan", formatVersion: 1, exportedAt: new Date().toISOString(),
+        applicationCount: state.apps.length, installedScopes: state.apps.map(app => app.scope),
+        reviews: state.reviews, selectedTargets: state.targets, applicationNotes: state.noteLinks, noteRelevance: readNoteRelevance(), teamBrief: readTeamBrief(),
+        pluginReviews: readLocalObject("platform-upgrade-plugin-review-collections-v2"), pluginTargets: readLocalObject("platform-upgrade-plugin-target-collections-v2"), pluginHistoryLabels: readLocalObject("platform-upgrade-plugin-history-labels-v1"), pluginWorkspaces
+      };
+      downloadFile(JSON.stringify(payload, null, 2), "application/json", `platform-upgrade-plan-${new Date().toISOString().slice(0, 10)}.json`);
+      showToast("Review plan exported.");
+    } catch (error) { showToast(error.message || "Could not export the complete review plan."); }
   }
 
   async function importPlan(file) {
@@ -708,32 +746,51 @@
     try {
       const backup = JSON.parse(await file.text());
       if (backup.format !== "platform-upgrade-plan" || !backup.reviews || typeof backup.reviews !== "object" || Array.isArray(backup.reviews)) throw new Error("This file is not a Platform Upgrade Desk review plan.");
-      const hasWork = Object.keys(state.reviews).length || Object.keys(state.targets).length || Object.keys(state.noteLinks).length || Object.keys(readLocalObject("platform-upgrade-plugin-review-collections-v2")).length;
-      if (hasWork && !window.confirm("Replace the application reviews, targets, and note links currently saved in this browser?")) return;
+      if (backup.pluginWorkspaces !== undefined) {
+        if (!Array.isArray(backup.pluginWorkspaces)) throw new Error("The plan contains invalid plugin workspaces.");
+        backup.pluginWorkspaces = backup.pluginWorkspaces.map(workspace => window.PlatformPluginHistory.validateWorkspace(workspace));
+      }
+      const workspaceDetail = {};
+      window.dispatchEvent(new CustomEvent("platform-plugin-workspace-backup", { detail: workspaceDetail }));
+      const currentWorkspaces = workspaceDetail.promise ? await workspaceDetail.promise : [];
+      const hasWork = Object.keys(state.reviews).length || Object.keys(state.targets).length || Object.keys(state.noteLinks).length
+        || Object.keys(readNoteRelevance()).length || readTeamBrief().length || currentWorkspaces.length
+        || ["platform-upgrade-plugin-review-collections-v2", "platform-upgrade-plugin-target-collections-v2", "platform-upgrade-plugin-history-labels-v1"].some(key => Object.keys(readLocalObject(key)).length);
+      if (hasWork && !window.confirm("Replace the application and plugin reviews, targets, note links, relevance choices, team brief, history labels, and backed-up workspace timelines with this plan? Unrelated workspaces and saved CSV files will not be removed.")) return;
+      let persisted = true;
       state.reviews = backup.reviews;
       state.targets = backup.selectedTargets && typeof backup.selectedTargets === "object" && !Array.isArray(backup.selectedTargets) ? backup.selectedTargets : {};
       state.noteLinks = backup.applicationNotes && typeof backup.applicationNotes === "object" && !Array.isArray(backup.applicationNotes) ? backup.applicationNotes : {};
       if (backup.noteRelevance && typeof backup.noteRelevance === "object" && !Array.isArray(backup.noteRelevance)) {
-        try { localStorage.setItem("platform-upgrade-note-relevance-v1", JSON.stringify(backup.noteRelevance)); } catch { /* The imported choices remain available until this tab closes. */ }
-        window.dispatchEvent(new CustomEvent("platform-note-relevance-restore", { detail: { values: backup.noteRelevance } }));
+        const detail = { values: backup.noteRelevance, persisted: true };
+        window.dispatchEvent(new CustomEvent("platform-note-relevance-restore", { detail }));
+        persisted = detail.persisted && persisted;
       }
-      if (Array.isArray(backup.teamBrief)) window.dispatchEvent(new CustomEvent("platform-team-brief-restore", { detail: { items: backup.teamBrief } }));
-      window.dispatchEvent(new CustomEvent("platform-plugin-review-restore", {
-        detail: {
-          reviewCollections: backup.pluginReviews && typeof backup.pluginReviews === "object" && !Array.isArray(backup.pluginReviews) ? backup.pluginReviews : {},
-          targetCollections: backup.pluginTargets && typeof backup.pluginTargets === "object" && !Array.isArray(backup.pluginTargets) ? backup.pluginTargets : {},
-          labels: backup.pluginHistoryLabels && typeof backup.pluginHistoryLabels === "object" && !Array.isArray(backup.pluginHistoryLabels) ? backup.pluginHistoryLabels : {}
-        }
-      }));
-      writeLocalObject(REVIEW_KEY, state.reviews);
-      writeLocalObject(TARGET_KEY, state.targets);
-      saveNoteLinks();
+      if (Array.isArray(backup.teamBrief)) {
+        const detail = { items: backup.teamBrief, persisted: true };
+        window.dispatchEvent(new CustomEvent("platform-team-brief-restore", { detail }));
+        persisted = detail.persisted && persisted;
+      }
+      const pluginDetail = {
+        reviewCollections: backup.pluginReviews && typeof backup.pluginReviews === "object" && !Array.isArray(backup.pluginReviews) ? backup.pluginReviews : {},
+        targetCollections: backup.pluginTargets && typeof backup.pluginTargets === "object" && !Array.isArray(backup.pluginTargets) ? backup.pluginTargets : {},
+        labels: backup.pluginHistoryLabels && typeof backup.pluginHistoryLabels === "object" && !Array.isArray(backup.pluginHistoryLabels) ? backup.pluginHistoryLabels : {},
+        persisted: true
+      };
+      window.dispatchEvent(new CustomEvent("platform-plugin-review-restore", { detail: pluginDetail }));
+      if (backup.pluginWorkspaces) {
+        const detail = { workspaces: backup.pluginWorkspaces, confirmReplace: false };
+        window.dispatchEvent(new CustomEvent("platform-plugin-workspace-restore", { detail }));
+        if (detail.promise) persisted = await detail.promise && persisted;
+      }
+      const applicationSaves = [writeLocalObject(REVIEW_KEY, state.reviews), writeLocalObject(TARGET_KEY, state.targets), saveNoteLinks()];
+      persisted = applicationSaves.every(Boolean) && pluginDetail.persisted && persisted;
       renderApplications();
       if (state.activeScope) {
         const app = state.apps.find(record => record.scope === state.activeScope);
         if (app) { loadActiveReview(app); updateTargetControl(app); renderLinkedNotes(); }
       }
-      showToast("Review plan restored.");
+      showToast(persisted ? "Review plan restored." : "Plan loaded, but some changes are session-only because browser storage could not save them. Keep this tab open.");
     } catch (error) {
       showToast(error.message || "Could not import this review plan.");
     } finally { elements.appPlanInput.value = ""; }
@@ -747,8 +804,8 @@
       state.installedRecords = imported.records;
       state.duplicateRows = imported.duplicateRows;
       buildApplications();
-      try { await saveDataset("installedApps", imported.records, { duplicateRows: imported.duplicateRows }); } catch { showToast("Apps loaded, but browser caching is unavailable."); }
-      showToast(`Loaded ${imported.records.length.toLocaleString()} unique scopes${imported.duplicateRows ? `; consolidated ${imported.duplicateRows} duplicate rows` : ""}.`);
+      const storageWarning = await saveDataset("installedApps", imported.records, { duplicateRows: imported.duplicateRows }).then(() => "", () => " This session only; browser caching is unavailable.");
+      showToast(`Loaded ${imported.records.length.toLocaleString()} unique scopes${imported.duplicateRows ? `; consolidated ${imported.duplicateRows} duplicate rows` : ""}.${storageWarning}`);
     } catch (error) { showToast(error.message || "Could not import installed apps."); }
     finally { elements.appInventoryInput.value = ""; }
   }
@@ -756,17 +813,16 @@
   async function importBrazilStoreCatalog(file) {
     if (!file) return;
     try {
-      if (state.brazilStoreRecords.length && !window.confirm("Replace the Brazil Store catalog currently loaded? The Zurich baseline will not change.")) return;
+      if (state.brazilStoreRecords.length && !window.confirm("Replace the Store catalog currently loaded? The installed baseline will not change.")) return;
       const imported = parseInstalledCsv(await file.text());
       const hasActiveField = Object.hasOwn(imported.records[0] || {}, "active");
       state.brazilStoreRecords = hasActiveField ? imported.records.filter(record => isTrue(record.active)) : imported.records;
       state.brazilStoreDuplicateRows = imported.duplicateRows;
       buildApplications();
-      try { await saveDataset(BRAZIL_STORE_CACHE_KEY, state.brazilStoreRecords, { duplicateRows: imported.duplicateRows }); }
-      catch { showToast("Brazil catalog loaded, but browser caching is unavailable."); }
-      showToast(`Loaded ${state.brazilStoreRecords.length.toLocaleString()} Brazil Store records; Zurich baseline unchanged.`);
+      const storageWarning = await saveDataset(BRAZIL_STORE_CACHE_KEY, state.brazilStoreRecords, { duplicateRows: imported.duplicateRows }).then(() => "", () => " This session only; browser caching is unavailable.");
+      showToast(`Loaded ${state.brazilStoreRecords.length.toLocaleString()} Store catalog records; installed baseline unchanged.${storageWarning}`);
     } catch (error) {
-      showToast(error.message || "Could not import the Brazil Store catalog.");
+      showToast(error.message || "Could not import the Store catalog.");
     } finally { elements.brazilStoreInput.value = ""; }
   }
 
@@ -776,10 +832,10 @@
       if (state.versionRecords.length && !window.confirm("Replace the version catalog currently loaded in this browser?")) return;
       state.versionRecords = parseVersionsCsv(await file.text());
       buildApplications();
-      try { await saveDataset("appVersions", state.versionRecords); } catch { showToast("Catalog loaded, but browser caching is unavailable."); }
+      const storageWarning = await saveDataset("appVersions", state.versionRecords).then(() => "", () => " This session only; browser caching is unavailable.");
       const matched = state.apps.filter(app => app.matchStatus === "matched").length;
       const uncertain = state.apps.filter(app => ["unmatched", "ambiguous"].includes(app.matchStatus)).length;
-      showToast(`Loaded ${state.versionRecords.length.toLocaleString()} versions; ${matched} apps matched, ${uncertain} need mapping.`);
+      showToast(`Loaded ${state.versionRecords.length.toLocaleString()} versions; ${matched} apps matched, ${uncertain} need mapping.${storageWarning}`);
     } catch (error) { showToast(error.message || "Could not import the version catalog."); }
     finally { elements.appVersionsInput.value = ""; }
   }
@@ -802,6 +858,10 @@
   }
 
   function bindEvents() {
+    window.addEventListener("platform-plugin-release-context", event => {
+      if (typeof event.detail?.title === "string") state.pluginReleaseTitle = event.detail.title;
+      updatePageHeading();
+    });
     elements.notesWorkspaceTab.addEventListener("click", () => setWorkspace("notes"));
     elements.upgradePlanWorkspaceTab.addEventListener("click", () => setWorkspace("upgrade-plan"));
     elements.problemFixesWorkspaceTab.addEventListener("click", () => setWorkspace("problems"));
@@ -832,13 +892,16 @@
     elements.exportAppPlan.addEventListener("click", exportPlan);
     elements.exportInstalledApps.addEventListener("click", () => exportCsv(state.installedRecords, "sys_store_app.csv"));
     elements.exportVersionCatalog.addEventListener("click", () => exportCsv(state.versionRecords, "sys_app_version.csv"));
-    elements.exportBrazilStore.addEventListener("click", () => exportCsv(state.brazilStoreRecords, "brazil-sys_store_app.csv"));
+    elements.exportBrazilStore.addEventListener("click", () => exportCsv(state.brazilStoreRecords, "store-app-catalog.csv"));
     elements.appInventoryInput.addEventListener("change", event => importInventory(event.target.files[0]));
     elements.appVersionsInput.addEventListener("change", event => importVersionCatalog(event.target.files[0]));
     elements.brazilStoreInput.addEventListener("change", event => importBrazilStoreCatalog(event.target.files[0]));
     elements.appPlanInput.addEventListener("change", event => importPlan(event.target.files[0]));
-    elements.applicationSearch.addEventListener("input", () => { state.page = 1; renderApplications(); });
-    [elements.applicationStatusFilter, elements.applicationReviewFilter, elements.applicationSort].forEach(control => control.addEventListener("change", () => { state.page = 1; renderApplications(); }));
+    applicationFilters = reviewFilters.createWorkbench({
+      rootId: "applicationWorkbench", searchId: "applicationSearch", sortId: "applicationSort", resetId: "resetApplicationFilters",
+      extras: [{ id: "applicationStatusFilter", label: "Catalog match", defaultValue: "all" }, { id: "applicationReviewFilter", label: "Progress", defaultValue: "all" }],
+      onChange: () => { state.page = 1; renderApplications(); }
+    });
     elements.applicationRows.addEventListener("click", event => {
       const button = event.target.closest("[data-app-scope]");
       if (button) openDrawer(button.dataset.appScope);
@@ -851,7 +914,18 @@
       elements.applicationsWorkspacePanel.scrollIntoView({ behavior: "smooth", block: "start" });
     });
     elements.closeApplicationDrawer.addEventListener("click", closeDrawer);
-    elements.appDrawerBackdrop.addEventListener("click", closeDrawer);
+    elements.applicationDrawer.addEventListener("click", event => {
+      if (event.target === elements.applicationDrawer) closeDrawer();
+    });
+    elements.applicationDrawer.addEventListener("cancel", event => { event.preventDefault(); closeDrawer(); });
+    elements.applicationDrawer.addEventListener("keydown", event => {
+      if (event.key === "Escape") { event.preventDefault(); closeDrawer(); return; }
+      if (event.key !== "Tab") return;
+      const focusable = [...elements.applicationDrawer.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [href]')].filter(node => node.offsetParent !== null);
+      if (!focusable.length) return;
+      if (event.shiftKey && document.activeElement === focusable[0]) { event.preventDefault(); focusable.at(-1).focus(); }
+      else if (!event.shiftKey && document.activeElement === focusable.at(-1)) { event.preventDefault(); focusable[0].focus(); }
+    });
     elements.applicationReviewForm.addEventListener("submit", saveActiveReview);
     elements.appReviewVersion.addEventListener("change", () => {
       const app = state.apps.find(record => record.scope === state.activeScope);
@@ -879,16 +953,6 @@
         saveNoteLinks();
         renderLinkedNotes();
       }
-    });
-    elements.applicationDrawer.addEventListener("keydown", event => {
-      if (event.key === "Escape") { closeDrawer(); return; }
-      if (event.key !== "Tab") return;
-      const focusable = [...elements.applicationDrawer.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [href]')].filter(node => node.offsetParent !== null);
-      if (!focusable.length) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     });
     document.querySelector(".application-menu").addEventListener("toggle", event => {
       if (event.currentTarget.open) document.querySelectorAll(".application-menu[open]").forEach(menu => { if (menu !== event.currentTarget) menu.open = false; });

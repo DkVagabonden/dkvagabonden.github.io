@@ -8,10 +8,15 @@
   ].map(id => [id, document.getElementById(id)]));
   const state = { mode: "brazil", products: [], installedApplications: [], pluginHistoryApplications: [], noteSuggestions: new Map(), selectedSlug: "serviceportal", currentCanonical: "", pageToken: 0, cache: new Map(), sourceFormats: new Map(), pendingReads: new Map(), searchableText: new Map(), noteRelevance: loadNoteRelevance(), markdownLoading: false, markdownFailures: 0 };
 
+  function normalizeNoteRelevance(values) {
+    if (!values || typeof values !== "object" || Array.isArray(values)) return {};
+    return Object.fromEntries(Object.entries(values).filter(([slug, status]) =>
+      /^[a-z0-9-]+$/.test(slug) && ["unreviewed", "relevant", "not-relevant"].includes(status)));
+  }
+
   function loadNoteRelevance() {
     try {
-      const value = JSON.parse(localStorage.getItem(NOTE_RELEVANCE_KEY));
-      return value && !Array.isArray(value) && typeof value === "object" ? value : {};
+      return normalizeNoteRelevance(JSON.parse(localStorage.getItem(NOTE_RELEVANCE_KEY)));
     } catch {
       return {};
     }
@@ -330,7 +335,7 @@
       const matches = state.noteSuggestions.get(product.slug) || [];
       const matchNames = [...new Set(matches.map(app => app.name))];
       const matchSummary = matchNames.length ? `${matchNames.length} exact app name${matchNames.length === 1 ? "" : "s"}: ${matchNames.slice(0, 2).join(", ")}${matchNames.length > 2 ? ` +${matchNames.length - 2}` : ""}` : "";
-      return `<li><button class="product-button${product.slug === state.selectedSlug ? " active" : ""}" type="button" data-product="${escapeHtml(product.slug)}" aria-current="${product.slug === state.selectedSlug ? "page" : "false"}">${escapeHtml(product.name)}${matchSummary ? `<small class="inventory-match">${escapeHtml(matchSummary)}</small>` : ""}<small class="relevance-${status}">${relevanceLabel(product.slug)}</small></button></li>`;
+      return `<li><button class="product-button${product.slug === state.selectedSlug ? " active" : ""}" type="button" data-product="${escapeHtml(product.slug)}" aria-current="${product.slug === state.selectedSlug ? "page" : "false"}">${escapeHtml(product.name)}${matchSummary ? `<small class="inventory-match">${escapeHtml(matchSummary)}</small>` : ""}<small class="relevance-${escapeHtml(status)}">${relevanceLabel(product.slug)}</small></button></li>`;
     }).join("");
     if (!filtered.length) {
       const message = relevance === "suggested" && !state.installedApplications.length
@@ -381,7 +386,7 @@
   }
 
   function setNoteRelevance(slug, status) {
-    if (!state.products.some(product => product.slug === slug)) return;
+    if (!state.products.some(product => product.slug === slug) || !["unreviewed", "relevant", "not-relevant"].includes(status)) return;
     state.noteRelevance[slug] = status;
     try { localStorage.setItem(NOTE_RELEVANCE_KEY, JSON.stringify(state.noteRelevance)); } catch { elements.footerStatus.textContent = "Relevance saved for this tab only; browser storage unavailable"; }
     renderCatalog();
@@ -557,8 +562,9 @@
   window.addEventListener("platform-note-relevance-restore", event => {
     const values = event.detail?.values;
     if (!values || typeof values !== "object" || Array.isArray(values)) return;
-    state.noteRelevance = values;
-    try { localStorage.setItem(NOTE_RELEVANCE_KEY, JSON.stringify(values)); } catch { /* Relevance remains available until this tab closes. */ }
+    state.noteRelevance = normalizeNoteRelevance(values);
+    try { localStorage.setItem(NOTE_RELEVANCE_KEY, JSON.stringify(state.noteRelevance)); event.detail.persisted = true; }
+    catch { event.detail.persisted = false; elements.footerStatus.textContent = "Relevance restored for this tab only; browser storage unavailable"; }
     renderCatalog();
     const current = elements.reader.querySelector(`[data-relevance-control="${state.selectedSlug}"]`);
     if (current) current.outerHTML = relevanceControl(state.selectedSlug);
